@@ -19,6 +19,7 @@ import Trades from "./pages/dashboard/Trades";
 import Analytics from "./pages/dashboard/Analytics";
 import DashboardPayouts from "./pages/dashboard/DashboardPayouts";
 import Certificates from "./pages/dashboard/Certificates";
+import Learning from "./pages/dashboard/Learning";
 import DashboardSettings from "./pages/dashboard/DashboardSettings";
 import Support from "./pages/dashboard/Support";
 import NotFound from "./pages/NotFound";
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="analytics" element={<Analytics />} />
             <Route path="payouts" element={<DashboardPayouts />} />
             <Route path="certificates" element={<Certificates />} />
+            <Route path="learning" element={<Learning />} />
             <Route path="settings" element={<DashboardSettings />} />
             <Route path="support" element={<Support />} />
           </Route>
