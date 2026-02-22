@@ -7,6 +7,7 @@ import {
   LineChart,
   CreditCard,
   Award,
+  BookOpen,
   Settings,
   HelpCircle,
   Menu,
@@ -23,6 +24,7 @@ const sidebarLinks = [
   { label: "Analytics", to: "/dashboard/analytics", icon: LineChart },
   { label: "Payouts", to: "/dashboard/payouts", icon: CreditCard },
   { label: "Certificates", to: "/dashboard/certificates", icon: Award },
+  { label: "Learning", to: "/dashboard/learning", icon: BookOpen },
   { label: "Settings", to: "/dashboard/settings", icon: Settings },
   { label: "Support", to: "/dashboard/support", icon: HelpCircle },
 ];
