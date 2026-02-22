@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import MarketingLayout from "@/components/MarketingLayout";
+import CinematicBackground from "@/components/CinematicBackground";
 import { plans, testimonials, faqItems } from "@/lib/mockData";
 import {
   ArrowRight,
@@ -37,6 +38,7 @@ const steps = [
 export default function Index() {
   return (
     <MarketingLayout>
+      <CinematicBackground />
       {/* Hero */}
       <section className="relative dot-grid">
         <div className="max-w-7xl mx-auto px-6 py-32 md:py-44">
