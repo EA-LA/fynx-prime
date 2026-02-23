@@ -1,19 +1,23 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
+import LanguageSelector from "@/components/LanguageSelector";
+import { useI18n } from "@/lib/i18n";
 
 const navLinks = [
-  { label: "Home", to: "/" },
-  { label: "How It Works", to: "/how-it-works" },
-  { label: "Challenges", to: "/challenges" },
-  { label: "Rules", to: "/rules" },
-  { label: "Payouts", to: "/payouts" },
-  { label: "FAQ", to: "/faq" },
+  { key: "nav.home", to: "/" },
+  { key: "nav.howItWorks", to: "/how-it-works" },
+  { key: "nav.challenges", to: "/challenges" },
+  { key: "nav.rules", to: "/rules" },
+  { key: "nav.payouts", to: "/payouts" },
+  { key: "nav.faq", to: "/faq" },
 ];
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { t } = useI18n();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -34,23 +38,25 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                   location.pathname === link.to ? "text-foreground" : "text-muted-foreground"
                 }`}
               >
-                {link.label}
+                {t(link.key)}
               </Link>
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
+            <LanguageSelector />
+            <ThemeToggle />
             <Link
               to="/login"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors ml-2"
             >
-              Log in
+              {t("nav.login")}
             </Link>
             <Link
               to="/signup"
               className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
             >
-              Get Started
+              {t("nav.getStarted")}
             </Link>
           </div>
 
@@ -73,15 +79,17 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                 onClick={() => setMobileOpen(false)}
                 className="block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                {link.label}
+                {t(link.key)}
               </Link>
             ))}
-            <div className="pt-3 border-t border-border flex gap-3">
+            <div className="pt-3 border-t border-border flex items-center gap-3">
+              <LanguageSelector />
+              <ThemeToggle />
               <Link to="/login" onClick={() => setMobileOpen(false)} className="text-sm text-muted-foreground hover:text-foreground">
-                Log in
+                {t("nav.login")}
               </Link>
               <Link to="/signup" onClick={() => setMobileOpen(false)} className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md">
-                Get Started
+                {t("nav.getStarted")}
               </Link>
             </div>
           </div>
@@ -96,30 +104,31 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             <div>
-              <h4 className="text-sm font-semibold mb-4">Product</h4>
+              <h4 className="text-sm font-semibold mb-4">{t("footer.product")}</h4>
               <div className="space-y-2">
-                <Link to="/challenges" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">Challenges</Link>
-                <Link to="/rules" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">Rules</Link>
-                <Link to="/payouts" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">Payouts</Link>
+                <Link to="/challenges" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("nav.challenges")}</Link>
+                <Link to="/rules" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("nav.rules")}</Link>
+                <Link to="/payouts" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("nav.payouts")}</Link>
               </div>
             </div>
             <div>
-              <h4 className="text-sm font-semibold mb-4">Company</h4>
+              <h4 className="text-sm font-semibold mb-4">{t("footer.company")}</h4>
               <div className="space-y-2">
-                <Link to="/how-it-works" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</Link>
-                <Link to="/faq" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
+                <Link to="/how-it-works" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("nav.howItWorks")}</Link>
+                <Link to="/faq" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("nav.faq")}</Link>
               </div>
             </div>
             <div>
-              <h4 className="text-sm font-semibold mb-4">Legal</h4>
+              <h4 className="text-sm font-semibold mb-4">{t("footer.legal")}</h4>
               <div className="space-y-2">
-                <span className="block text-sm text-muted-foreground">Terms of Service</span>
-                <span className="block text-sm text-muted-foreground">Privacy Policy</span>
-                <span className="block text-sm text-muted-foreground">Risk Disclosure</span>
+                <Link to="/terms" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("footer.terms")}</Link>
+                <Link to="/privacy" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("footer.privacy")}</Link>
+                <Link to="/risk-disclosure" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("footer.risk")}</Link>
+                <Link to="/refund-policy" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("footer.refund")}</Link>
               </div>
             </div>
             <div>
-              <h4 className="text-sm font-semibold mb-4">Connect</h4>
+              <h4 className="text-sm font-semibold mb-4">{t("footer.connect")}</h4>
               <div className="space-y-2">
                 <span className="block text-sm text-muted-foreground">Discord</span>
                 <span className="block text-sm text-muted-foreground">Twitter</span>
@@ -128,12 +137,27 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <div className="glow-line mb-8" />
+
+          {/* Compliance area */}
+          <div className="mb-6 p-4 border border-border rounded-md bg-card/50">
+            <p className="text-xs text-muted-foreground mb-2">
+              <span className="font-semibold text-foreground/70">{t("footer.companyName")}</span> · support@fynxfunded.com
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2">
+              <Link to="/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t("footer.terms")}</Link>
+              <Link to="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t("footer.privacy")}</Link>
+              <Link to="/risk-disclosure" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t("footer.risk")}</Link>
+              <Link to="/refund-policy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t("footer.refund")}</Link>
+            </div>
+            <p className="text-xs text-muted-foreground/70">{t("footer.disclaimer")}</p>
+          </div>
+
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2026 FYNX Funded. All rights reserved.
+              {t("footer.rights")}
             </p>
             <p className="text-xs text-muted-foreground max-w-md text-center md:text-right">
-              Trading involves substantial risk. Past performance is not indicative of future results. This is a simulated trading environment.
+              {t("footer.disclaimer")}
             </p>
           </div>
         </div>

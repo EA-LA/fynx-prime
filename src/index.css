@@ -51,6 +51,50 @@
     --danger: 0 0% 35%;
   }
 
+  /* Light theme */
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+
+    --primary: 0 0% 8%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 8%;
+
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 0 0% 92%;
+    --accent-foreground: 0 0% 8%;
+
+    --destructive: 0 0% 40%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 0 0% 60%;
+
+    --sidebar-background: 0 0% 97%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 0 0% 8%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 8%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 60%;
+
+    --success: 0 0% 35%;
+    --warning: 0 0% 50%;
+    --danger: 0 0% 65%;
+  }
+
   .dark {
     --background: 0 0% 4%;
     --foreground: 0 0% 96%;
@@ -86,7 +130,7 @@
 
   /* Micro-dot grid background */
   .dot-grid {
-    background-image: radial-gradient(circle, hsl(0 0% 18%) 0.5px, transparent 0.5px);
+    background-image: radial-gradient(circle, hsl(var(--muted-foreground) / 0.15) 0.5px, transparent 0.5px);
     background-size: 24px 24px;
   }
 
@@ -148,7 +192,7 @@
   }
   .hover-lift:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px -8px hsl(0 0% 0% / 0.5);
+    box-shadow: 0 8px 30px -8px hsl(var(--foreground) / 0.15);
   }
 
   /* Premium card */
@@ -157,28 +201,28 @@
   }
   .premium-card:hover {
     @apply border-foreground/20;
-    box-shadow: 0 0 40px -12px hsl(0 0% 100% / 0.06);
+    box-shadow: 0 0 40px -12px hsl(var(--foreground) / 0.06);
   }
 
   /* Glass effect */
   .glass {
     backdrop-filter: blur(12px);
-    background: hsl(0 0% 6% / 0.8);
+    background: hsl(var(--background) / 0.8);
   }
 
   /* Glow line */
   .glow-line {
     height: 1px;
-    background: linear-gradient(90deg, transparent, hsl(0 0% 40%), transparent);
+    background: linear-gradient(90deg, transparent, hsl(var(--muted-foreground)), transparent);
   }
 
   /* Skeleton shimmer */
   .skeleton-shimmer {
     background: linear-gradient(
       90deg,
-      hsl(0 0% 10%) 0%,
-      hsl(0 0% 16%) 50%,
-      hsl(0 0% 10%) 100%
+      hsl(var(--muted)) 0%,
+      hsl(var(--accent)) 50%,
+      hsl(var(--muted)) 100%
     );
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
@@ -186,14 +230,8 @@
 }
 
 @keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeIn {
@@ -202,36 +240,18 @@
 }
 
 @keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes shimmer {
@@ -245,12 +265,12 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(0 0% 6%);
+  background: hsl(var(--background));
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 20%);
+  background: hsl(var(--muted));
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 30%);
+  background: hsl(var(--muted-foreground));
 }
