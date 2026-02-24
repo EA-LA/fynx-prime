@@ -1,11 +1,17 @@
 import { useState } from "react";
 import MarketingLayout from "@/components/MarketingLayout";
 import { plans, aggressivePlans } from "@/lib/mockData";
+import { challengeConfigs } from "@/lib/challengeConfig";
 import { Link } from "react-router-dom";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Globe2 } from "lucide-react";
+
+type CompareView = "quick" | "full";
+type PhaseType = "1-phase" | "2-phase" | "3-phase";
 
 export default function ChallengesPricing() {
   const [mode, setMode] = useState<"normal" | "aggressive">("normal");
+  const [compareView, setCompareView] = useState<CompareView>("quick");
+  const [comparePhase, setComparePhase] = useState<PhaseType>("2-phase");
   const activePlans = mode === "normal" ? plans : aggressivePlans;
 
   return (
@@ -60,16 +66,16 @@ export default function ChallengesPricing() {
                 <span className="text-sm text-muted-foreground ml-1">one-time</span>
               </div>
               <div className="space-y-3 text-sm">
-                <Row label="Account Size" value={`$${plan.accountSize}`} />
-                <Row label="Profit Target" value={plan.profitTarget} />
-                <Row label="Daily Loss Limit" value={plan.dailyLoss} />
-                <Row label="Max Loss Limit" value={plan.maxLoss} />
-                <Row label="Min Trading Days" value={`${plan.minDays} days`} />
-                <Row label="Profit Split" value={plan.profitSplit} />
-                <Row label="Fee Refund" value={plan.refund ? "Yes" : "No"} />
+                <PlanRow label="Account Size" value={`$${plan.accountSize}`} />
+                <PlanRow label="Profit Target" value={plan.profitTarget} />
+                <PlanRow label="Daily Loss Limit" value={plan.dailyLoss} />
+                <PlanRow label="Max Loss Limit" value={plan.maxLoss} />
+                <PlanRow label="Min Trading Days" value={`${plan.minDays} days`} />
+                <PlanRow label="Profit Split" value={plan.profitSplit} />
+                <PlanRow label="Fee Refund" value={plan.refund ? "Yes" : "No"} />
               </div>
               <Link
-                to="/signup"
+                to="/challenge-builder"
                 className="mt-6 w-full inline-flex items-center justify-center gap-1 bg-primary text-primary-foreground text-sm font-medium py-2.5 rounded-md hover:bg-primary/90 transition-colors"
               >
                 Start Challenge <ArrowRight size={14} />
@@ -80,57 +86,160 @@ export default function ChallengesPricing() {
 
         <div className="glow-line mb-16" />
 
-        {/* Comparison table */}
-        <h2 className="text-2xl font-bold text-center mb-8 animate-fade-up">Compare Plans</h2>
+        {/* Compare Plans — Enhanced */}
+        <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-up">
+          <h2 className="text-2xl font-bold">Compare Plans</h2>
+          <div className="flex items-center gap-2">
+            {/* Phase filter */}
+            <div className="inline-flex items-center gap-1 bg-secondary rounded-md p-0.5">
+              {(["1-phase", "2-phase", "3-phase"] as PhaseType[]).map((pt) => (
+                <button
+                  key={pt}
+                  onClick={() => setComparePhase(pt)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors capitalize ${
+                    comparePhase === pt ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {pt.replace("-", " ")}
+                </button>
+              ))}
+            </div>
+            {/* View toggle */}
+            <div className="inline-flex items-center gap-1 bg-secondary rounded-md p-0.5">
+              <button
+                onClick={() => setCompareView("quick")}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  compareView === "quick" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Quick
+              </button>
+              <button
+                onClick={() => setCompareView("full")}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  compareView === "full" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Full
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-x-auto animate-fade-up delay-200">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-3 px-4 font-medium text-muted-foreground">Feature</th>
-                {activePlans.map((p) => (
-                  <th key={p.name} className="text-center py-3 px-4 font-medium">{p.name.replace(" Challenge", "")}</th>
+                {challengeConfigs.map((c) => (
+                  <th key={c.accountSize} className="text-center py-3 px-4 font-medium">{c.label}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {[
-                { label: "Price", key: "price", fmt: (v: number) => `$${v}` },
-                { label: "Profit Target", key: "profitTarget" },
-                { label: "Daily Loss", key: "dailyLoss" },
-                { label: "Max Loss", key: "maxLoss" },
-                { label: "Min Days", key: "minDays", fmt: (v: number) => `${v} days` },
-                { label: "Profit Split", key: "profitSplit" },
-              ].map((row) => (
-                <tr key={row.label}>
-                  <td className="py-3 px-4 text-muted-foreground">{row.label}</td>
-                  {activePlans.map((p) => (
-                    <td key={p.name} className="py-3 px-4 text-center">
-                      {row.fmt ? row.fmt((p as any)[row.key]) : (p as any)[row.key]}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              <tr>
-                <td className="py-3 px-4 text-muted-foreground">Fee Refund</td>
-                {activePlans.map((p) => (
-                  <td key={p.name} className="py-3 px-4 text-center">
-                    <Check size={16} className="mx-auto" />
-                  </td>
-                ))}
-              </tr>
+              <CompareRow
+                label="Price"
+                values={challengeConfigs.map((c) => `$${c.phases[comparePhase].price}`)}
+              />
+              <CompareRow
+                label="Phase Type"
+                values={challengeConfigs.map(() => comparePhase.replace("-", " "))}
+              />
+              <CompareRow
+                label="Profit Target(s)"
+                values={challengeConfigs.map((c) => c.phases[comparePhase].profitTargets.join(" → "))}
+              />
+              <CompareRow
+                label="Daily Loss Limit"
+                values={challengeConfigs.map((c) => c.phases[comparePhase].dailyLoss)}
+              />
+              <CompareRow
+                label="Max Loss Limit"
+                values={challengeConfigs.map((c) => c.phases[comparePhase].maxLoss)}
+              />
+              <CompareRow
+                label="Min Trading Days"
+                values={challengeConfigs.map((c) => `${c.phases[comparePhase].minDays} days`)}
+              />
+              <CompareRow
+                label="Profit Split"
+                values={challengeConfigs.map((c) => c.phases[comparePhase].profitSplit)}
+              />
+              {compareView === "full" && (
+                <>
+                  <CompareRow
+                    label="Leverage (Forex)"
+                    values={challengeConfigs.map((c) => c.phases[comparePhase].leverageForex)}
+                  />
+                  <CompareRow
+                    label="Fee Refund"
+                    values={challengeConfigs.map((c) => c.phases[comparePhase].refundEligible ? "Yes" : "No")}
+                    isCheck
+                  />
+                  <CompareRow
+                    label="Normal Style"
+                    values={challengeConfigs.map(() => "Available")}
+                    isCheck
+                  />
+                  <CompareRow
+                    label="Swing Style"
+                    values={challengeConfigs.map(() => "Available")}
+                    isCheck
+                  />
+                  <CompareRow
+                    label="Weekend Holding"
+                    values={challengeConfigs.map(() => "Swing only")}
+                  />
+                  <CompareRow
+                    label="News Trading"
+                    values={challengeConfigs.map(() => "Allowed")}
+                  />
+                  <CompareRow
+                    label="Consistency Rule"
+                    values={challengeConfigs.map(() => "Applied")}
+                  />
+                </>
+              )}
             </tbody>
           </table>
+        </div>
+
+        {/* Global scope statement */}
+        <div className="mt-12 premium-card animate-fade-up">
+          <div className="flex items-start gap-3">
+            <Globe2 size={18} className="text-muted-foreground mt-0.5 shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold mb-1">Global Market Coverage</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                FYNX Funded supports trading across all major global currencies and financial markets.
+                Forex trading is available now. Additional asset classes — including Crypto, Indices, Stocks, Futures, Options, Bonds, and Funds — are being rolled out in future phases.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
     </MarketingLayout>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function PlanRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between border-b border-border/50 pb-2">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium">{value}</span>
     </div>
+  );
+}
+
+function CompareRow({ label, values, isCheck }: { label: string; values: string[]; isCheck?: boolean }) {
+  return (
+    <tr>
+      <td className="py-3 px-4 text-muted-foreground">{label}</td>
+      {values.map((v, i) => (
+        <td key={i} className="py-3 px-4 text-center">
+          {isCheck ? <Check size={16} className="mx-auto" /> : v}
+        </td>
+      ))}
+    </tr>
   );
 }

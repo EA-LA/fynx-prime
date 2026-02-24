@@ -53,6 +53,13 @@ export default function Objectives() {
           );
         })}
       </div>
+
+      {/* Coming soon placeholder */}
+      <div className="premium-card text-center py-8">
+        <p className="text-sm text-muted-foreground">
+          More objective types and automated rule-checking coming soon.
+        </p>
+      </div>
     </div>
   );
 }

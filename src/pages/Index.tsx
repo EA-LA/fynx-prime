@@ -53,7 +53,7 @@ export default function Index() {
             </p>
             <div className="mt-10 flex flex-wrap gap-4 animate-fade-up delay-300">
               <Link
-                to="/challenges"
+                to="/challenge-builder"
                 className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors"
               >
                 Start Challenge <ArrowRight size={16} />
@@ -238,7 +238,7 @@ export default function Index() {
           </p>
           <div className="mt-8 animate-fade-up delay-300">
             <Link
-              to="/challenges"
+              to="/challenge-builder"
               className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-3.5 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors"
             >
               Start Your Challenge <ArrowRight size={16} />

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSelector from "@/components/LanguageSelector";
+import EcosystemSwitch from "@/components/EcosystemSwitch";
 import { useI18n } from "@/lib/i18n";
 
 const navLinks = [
@@ -24,9 +25,12 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="text-xl font-bold tracking-tight">
-            FYNX<span className="text-muted-foreground font-light ml-1">Funded</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/" className="text-xl font-bold tracking-tight">
+              FYNX<span className="text-muted-foreground font-light ml-1">Funded</span>
+            </Link>
+            <EcosystemSwitch />
+          </div>
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-8">
@@ -151,6 +155,10 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             </div>
             <p className="text-xs text-muted-foreground/70">{t("footer.disclaimer")}</p>
           </div>
+
+          <p className="text-xs text-muted-foreground/60 mb-6">
+            FYNX Funded is building a multi-asset funded trading platform designed to support all major global markets and currencies.
+          </p>
 
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
