@@ -28,6 +28,7 @@ import Certificates from "./pages/dashboard/Certificates";
 import Learning from "./pages/dashboard/Learning";
 import DashboardSettings from "./pages/dashboard/DashboardSettings";
 import Support from "./pages/dashboard/Support";
+import ChallengeBuilder from "./pages/ChallengeBuilder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/risk-disclosure" element={<RiskDisclosure />} />
               <Route path="/refund-policy" element={<RefundPolicy />} />
+              <Route path="/challenge-builder" element={<ChallengeBuilder />} />
               <Route path="/dashboard" element={<DashboardLayout />}>
                 <Route index element={<DashboardOverview />} />
                 <Route path="accounts" element={<MyAccounts />} />

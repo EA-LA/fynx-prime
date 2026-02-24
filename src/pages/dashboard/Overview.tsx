@@ -27,9 +27,17 @@ const notifications = [
 export default function DashboardOverview() {
   return (
     <div className="space-y-6 animate-fade-up">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Welcome back, John. Here's your trading overview.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Welcome back, John. Here's your trading overview.</p>
+        </div>
+        <a
+          href="/challenge-builder"
+          className="bg-primary text-primary-foreground px-4 py-2.5 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+        >
+          New Challenge
+        </a>
       </div>
 
       {/* Account status */}

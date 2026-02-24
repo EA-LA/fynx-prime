@@ -126,6 +126,13 @@ export default function Analytics() {
           </div>
         </div>
       </div>
+
+      {/* Coming soon placeholder */}
+      <div className="premium-card text-center py-8">
+        <p className="text-sm text-muted-foreground">
+          Advanced performance breakdowns, sessions analysis, and risk metrics coming soon.
+        </p>
+      </div>
     </div>
   );
 }
