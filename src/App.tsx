@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { I18nProvider } from "@/lib/i18n";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
 import ChallengesPricing from "./pages/ChallengesPricing";
@@ -13,6 +15,7 @@ import PayoutsPage from "./pages/PayoutsPage";
 import FAQ from "./pages/FAQ";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import RiskDisclosure from "./pages/RiskDisclosure";
@@ -47,40 +50,46 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/how-it-works" element={<HowItWorks />} />
-              <Route path="/challenges" element={<ChallengesPricing />} />
-              <Route path="/rules" element={<RulesPage />} />
-              <Route path="/payouts" element={<PayoutsPage />} />
-              <Route path="/faq" element={<FAQ />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/risk-disclosure" element={<RiskDisclosure />} />
-              <Route path="/refund-policy" element={<RefundPolicy />} />
-              <Route path="/challenge-builder" element={<ChallengeBuilder />} />
-              <Route path="/aml-kyc" element={<AmlKyc />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/checkout/success" element={<CheckoutSuccess />} />
-              <Route path="/checkout/failure" element={<CheckoutFailure />} />
-              <Route path="/order-status" element={<OrderStatus />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/dashboard" element={<DashboardLayout />}>
-                <Route index element={<DashboardOverview />} />
-                <Route path="accounts" element={<MyAccounts />} />
-                <Route path="objectives" element={<Objectives />} />
-                <Route path="trades" element={<Trades />} />
-                <Route path="analytics" element={<Analytics />} />
-                <Route path="payouts" element={<DashboardPayouts />} />
-                <Route path="certificates" element={<Certificates />} />
-                <Route path="learning" element={<Learning />} />
-                <Route path="settings" element={<DashboardSettings />} />
-                <Route path="support" element={<Support />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AuthProvider>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/how-it-works" element={<HowItWorks />} />
+                <Route path="/challenges" element={<ChallengesPricing />} />
+                <Route path="/rules" element={<RulesPage />} />
+                <Route path="/payouts" element={<PayoutsPage />} />
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/risk-disclosure" element={<RiskDisclosure />} />
+                <Route path="/refund-policy" element={<RefundPolicy />} />
+                <Route path="/challenge-builder" element={<ChallengeBuilder />} />
+                <Route path="/aml-kyc" element={<AmlKyc />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/checkout/success" element={<CheckoutSuccess />} />
+                <Route path="/checkout/failure" element={<CheckoutFailure />} />
+                <Route path="/order-status" element={<OrderStatus />} />
+
+                {/* Protected routes */}
+                <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                  <Route index element={<DashboardOverview />} />
+                  <Route path="accounts" element={<MyAccounts />} />
+                  <Route path="objectives" element={<Objectives />} />
+                  <Route path="trades" element={<Trades />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="payouts" element={<DashboardPayouts />} />
+                  <Route path="certificates" element={<Certificates />} />
+                  <Route path="learning" element={<Learning />} />
+                  <Route path="settings" element={<DashboardSettings />} />
+                  <Route path="support" element={<Support />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
