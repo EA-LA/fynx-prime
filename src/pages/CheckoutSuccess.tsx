@@ -1,58 +1,33 @@
 import { Link } from "react-router-dom";
 import { CheckCircle2, Download, ArrowRight, FileText } from "lucide-react";
+import { useState, useEffect } from "react";
+import { dataService } from "@/services/database";
+import { downloadReceipt } from "@/services/payments";
+import type { Order } from "@/services/types";
 
 export default function CheckoutSuccess() {
-  const raw = localStorage.getItem("fynx_last_order");
-  const order = raw ? JSON.parse(raw) : null;
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleDownloadReceipt = () => {
-    if (!order) return;
-    const receipt = `
-═══════════════════════════════════════
-         FYNX FUNDED — RECEIPT
-═══════════════════════════════════════
+  useEffect(() => {
+    const loadOrder = async () => {
+      const orderId = localStorage.getItem("fynx_last_order_id");
+      if (orderId) {
+        const found = await dataService.getOrder(orderId);
+        setOrder(found);
+      }
+      setLoading(false);
+    };
+    loadOrder();
+  }, []);
 
-Company:      FYNX Funded
-Website:      www.fynxfunded.com
-Email:        support@fynxfunded.com
-
-───────────────────────────────────────
-ORDER DETAILS
-───────────────────────────────────────
-
-Order ID:     ${order.id}
-Date:         ${new Date(order.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
-Status:       ${order.status}
-
-Challenge:    ${order.challenge}
-Account Size: $${order.accountSize?.toLocaleString()}
-Currency:     ${order.currency}
-Style:        ${order.style === "swing" ? "Swing" : "Normal"}
-
-───────────────────────────────────────
-PAYMENT
-───────────────────────────────────────
-
-Method:       ${order.method}
-Amount:       $${order.amount}
-Status:       Paid
-
-═══════════════════════════════════════
-This is a simulated trading evaluation.
-No real capital is at risk. Performance-
-based payouts are subject to meeting
-all challenge objectives and KYC.
-═══════════════════════════════════════
-    `.trim();
-
-    const blob = new Blob([receipt], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `FYNX-Receipt-${order.id}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!order) {
     return (
@@ -64,6 +39,10 @@ all challenge objectives and KYC.
       </div>
     );
   }
+
+  const handleDownloadReceipt = () => {
+    downloadReceipt(order);
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
@@ -77,11 +56,11 @@ all challenge objectives and KYC.
         </div>
 
         <div className="premium-card space-y-3 text-sm mb-6">
-          <DetailRow label="Order ID" value={order.id} mono />
+          <DetailRow label="Order ID" value={order.orderId} mono />
           <DetailRow label="Challenge" value={order.challenge} />
           <DetailRow label="Amount" value={`$${order.amount}`} />
-          <DetailRow label="Payment Method" value={order.method} />
-          <DetailRow label="Date" value={new Date(order.date).toLocaleDateString()} />
+          <DetailRow label="Payment Method" value={order.paymentMethod} />
+          <DetailRow label="Date" value={new Date(order.createdAt).toLocaleDateString()} />
           <DetailRow label="Status" value={order.status} />
         </div>
 

@@ -1,7 +1,18 @@
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, Wallet, Target, BarChart3, LineChart, CreditCard,
-  Award, BookOpen, Settings, HelpCircle, Menu, X, LogOut,
+  LayoutDashboard,
+  Wallet,
+  Target,
+  BarChart3,
+  LineChart,
+  CreditCard,
+  Award,
+  BookOpen,
+  Settings,
+  HelpCircle,
+  Menu,
+  X,
+  LogOut,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,7 +34,7 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
 
   const isActive = (path: string) => {
     if (path === "/dashboard") return location.pathname === "/dashboard";
@@ -34,10 +45,6 @@ export default function DashboardLayout() {
     await signOut();
     navigate("/login");
   };
-
-  const initials = user?.fullName
-    ? user.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-    : "??";
 
   return (
     <div className="min-h-screen flex">
@@ -74,15 +81,11 @@ export default function DashboardLayout() {
         <div className="p-3 border-t border-sidebar-border">
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-accent-foreground">
-              {initials}
+              JD
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {user?.nickname || user?.fullName || "Trader"}
-              </p>
-              <p className="text-xs text-sidebar-foreground/50 truncate">
-                {user?.email || ""}
-              </p>
+              <p className="text-sm font-medium text-sidebar-foreground truncate">John Doe</p>
+              <p className="text-xs text-sidebar-foreground/50 truncate">trader@example.com</p>
             </div>
           </div>
           <button
@@ -115,9 +118,8 @@ export default function DashboardLayout() {
           </button>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              {user?.fullName || ""}
-            </span>
+            <span className="text-xs text-muted-foreground">Account:</span>
+            <span className="text-xs font-medium bg-secondary px-2 py-1 rounded">FX-10241</span>
           </div>
         </header>
 

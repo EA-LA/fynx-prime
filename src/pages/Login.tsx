@@ -7,22 +7,16 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
     try {
       await signIn(email, password);
       navigate("/dashboard");
-    } catch (err: any) {
-      setError(err?.message || "Login failed. Please try again.");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error("[Login] Sign in failed:", err);
     }
   };
 
@@ -35,12 +29,6 @@ export default function Login() {
           </Link>
           <p className="mt-2 text-sm text-muted-foreground">Welcome back. Log in to your dashboard.</p>
         </div>
-
-        {error && (
-          <div className="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -74,24 +62,11 @@ export default function Login() {
               </button>
             </div>
           </div>
-          <div className="flex justify-end">
-            <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-              Forgot password?
-            </Link>
-          </div>
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-primary text-primary-foreground py-2.5 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-primary text-primary-foreground py-2.5 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors"
           >
-            {loading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              "Log In"
-            )}
+            Log In
           </button>
         </form>
 
