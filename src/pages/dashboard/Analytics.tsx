@@ -1,5 +1,6 @@
 import { useTradingData, computeAnalytics } from "@/hooks/use-trading-data";
 import { BarChart3 } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default function Analytics() {
   const { hasTrades, trades } = useTradingData();
@@ -12,13 +13,11 @@ export default function Analytics() {
           <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
           <p className="text-sm text-muted-foreground mt-1">Performance breakdown and insights.</p>
         </div>
-        <div className="premium-card text-center py-20">
-          <BarChart3 size={48} className="mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">No analytics yet</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Analytics will appear once trading begins. Start a challenge and place your first trade.
-          </p>
-        </div>
+        <EmptyState
+          icon={<BarChart3 size={24} />}
+          title="No analytics yet"
+          description="Analytics will appear once trading begins. Start a challenge and place your first trade."
+        />
       </div>
     );
   }

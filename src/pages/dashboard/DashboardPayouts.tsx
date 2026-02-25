@@ -1,5 +1,6 @@
 import { useTradingData } from "@/hooks/use-trading-data";
 import { CreditCard, Wallet } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default function DashboardPayouts() {
   const { hasAccount, payout } = useTradingData();
@@ -11,13 +12,11 @@ export default function DashboardPayouts() {
           <h1 className="text-2xl font-bold tracking-tight">Payouts</h1>
           <p className="text-sm text-muted-foreground mt-1">Request payouts and view history.</p>
         </div>
-        <div className="premium-card text-center py-20">
-          <Wallet size={48} className="mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">No payout data</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Payout information will be available once you have a funded account and meet eligibility requirements.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Wallet size={24} />}
+          title="No payout data"
+          description="Payout information will be available once you have a funded account and meet eligibility requirements."
+        />
       </div>
     );
   }
