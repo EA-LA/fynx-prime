@@ -1,34 +1,36 @@
-import { mockTrades } from "@/lib/mockData";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, PieChart, Pie, Cell } from "recharts";
-
-const winCount = mockTrades.filter((t) => t.pnl > 0).length;
-const lossCount = mockTrades.filter((t) => t.pnl <= 0).length;
-
-const winLossData = [
-  { name: "Wins", value: winCount },
-  { name: "Losses", value: lossCount },
-];
-
-const pieColors = ["hsl(0 0% 85%)", "hsl(0 0% 30%)"];
-
-const pairPerformance = mockTrades.reduce((acc, t) => {
-  if (!acc[t.symbol]) acc[t.symbol] = 0;
-  acc[t.symbol] += t.pnl;
-  return acc;
-}, {} as Record<string, number>);
-
-const pairData = Object.entries(pairPerformance)
-  .map(([symbol, pnl]) => ({ symbol, pnl: Math.round(pnl * 100) / 100 }))
-  .sort((a, b) => b.pnl - a.pnl);
-
-const sessionData = [
-  { session: "London", pnl: 423 },
-  { session: "New York", pnl: 312 },
-  { session: "Asian", pnl: -89 },
-  { session: "Overlap", pnl: 567 },
-];
+import { useTradingData, computeAnalytics } from "@/hooks/use-trading-data";
+import { BarChart3 } from "lucide-react";
 
 export default function Analytics() {
+  const { hasTrades, trades } = useTradingData();
+  const analytics = computeAnalytics(trades);
+
+  if (!hasTrades || !analytics) {
+    return (
+      <div className="space-y-6 animate-fade-up">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
+          <p className="text-sm text-muted-foreground mt-1">Performance breakdown and insights.</p>
+        </div>
+        <div className="premium-card text-center py-20">
+          <BarChart3 size={48} className="mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-xl font-semibold mb-2">No analytics yet</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            Analytics will appear once trading begins. Start a challenge and place your first trade.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const statBlock = (label: string, value: string | number, sub?: string) => (
+    <div className="bg-secondary/50 rounded-lg p-4">
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className="text-xl font-bold">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+    </div>
+  );
+
   return (
     <div className="space-y-6 animate-fade-up">
       <div>
@@ -36,102 +38,70 @@ export default function Analytics() {
         <p className="text-sm text-muted-foreground mt-1">Performance breakdown and insights.</p>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Win/Loss */}
-        <div className="premium-card">
-          <h3 className="text-sm font-semibold mb-4">Win / Loss Distribution</h3>
-          <div className="h-48 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={winLossData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={70}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {winLossData.map((_, i) => (
-                    <Cell key={i} fill={pieColors[i]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(0 0% 7%)",
-                    border: "1px solid hsl(0 0% 16%)",
-                    borderRadius: "6px",
-                    fontSize: 12,
-                    color: "hsl(0 0% 96%)",
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex justify-center gap-6 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full" style={{ background: pieColors[0] }} />
-              Wins: {winCount}
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full" style={{ background: pieColors[1] }} />
-              Losses: {lossCount}
-            </div>
-          </div>
-        </div>
-
-        {/* Session Performance */}
-        <div className="premium-card">
-          <h3 className="text-sm font-semibold mb-4">Session Performance</h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sessionData}>
-                <XAxis dataKey="session" stroke="hsl(0 0% 30%)" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="hsl(0 0% 30%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(0 0% 7%)",
-                    border: "1px solid hsl(0 0% 16%)",
-                    borderRadius: "6px",
-                    fontSize: 12,
-                    color: "hsl(0 0% 96%)",
-                  }}
-                />
-                <Bar dataKey="pnl" fill="hsl(0 0% 70%)" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Best/Worst Pairs */}
-        <div className="premium-card lg:col-span-2">
-          <h3 className="text-sm font-semibold mb-4">Performance by Pair</h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={pairData} layout="vertical">
-                <XAxis type="number" stroke="hsl(0 0% 30%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
-                <YAxis type="category" dataKey="symbol" stroke="hsl(0 0% 30%)" fontSize={11} tickLine={false} axisLine={false} width={70} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(0 0% 7%)",
-                    border: "1px solid hsl(0 0% 16%)",
-                    borderRadius: "6px",
-                    fontSize: 12,
-                    color: "hsl(0 0% 96%)",
-                  }}
-                />
-                <Bar dataKey="pnl" fill="hsl(0 0% 60%)" radius={[0, 3, 3, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+      {/* Trade Performance */}
+      <div className="premium-card">
+        <h3 className="text-sm font-semibold mb-4">Trade Performance</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {statBlock("Total Trades", analytics.totalTrades)}
+          {statBlock("Win Rate", `${analytics.winRate.toFixed(1)}%`)}
+          {statBlock("Avg Win", `$${analytics.avgWin.toFixed(2)}`)}
+          {statBlock("Avg Loss", `$${analytics.avgLoss.toFixed(2)}`)}
+          {statBlock("Profit Factor", analytics.profitFactor.toFixed(2))}
+          {statBlock("Expectancy", `$${analytics.expectancy.toFixed(2)}`)}
         </div>
       </div>
 
-      {/* Coming soon placeholder */}
-      <div className="premium-card text-center py-8">
-        <p className="text-sm text-muted-foreground">
-          Advanced performance breakdowns, sessions analysis, and risk metrics coming soon.
-        </p>
+      {/* Risk Metrics */}
+      <div className="premium-card">
+        <h3 className="text-sm font-semibold mb-4">Risk Metrics</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {statBlock("Max Drawdown", `$${analytics.maxDrawdown.toFixed(2)}`)}
+          {statBlock("Current Drawdown", `$${analytics.currentDrawdown.toFixed(2)}`)}
+          {statBlock("Avg Risk/Trade", `${analytics.avgRisk.toFixed(1)}%`)}
+          {statBlock("Avg R:R", analytics.avgRR.toFixed(2))}
+          {statBlock("Max Consec. Wins", analytics.maxConsWins)}
+          {statBlock("Max Consec. Losses", analytics.maxConsLosses)}
+        </div>
+      </div>
+
+      {/* Session Analysis */}
+      <div className="premium-card">
+        <h3 className="text-sm font-semibold mb-4">Session Analysis</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {Object.entries(analytics.sessions).map(([session, pnl]) => (
+            <div key={session} className={`bg-secondary/50 rounded-lg p-4 ${session === analytics.bestSession ? "ring-1 ring-foreground/20" : ""}`}>
+              <p className="text-xs text-muted-foreground mb-1">{session}</p>
+              <p className={`text-xl font-bold ${pnl >= 0 ? "" : "text-muted-foreground"}`}>
+                {pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}
+              </p>
+              {session === analytics.bestSession && (
+                <p className="text-[10px] font-medium mt-1 text-muted-foreground">Best Session</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Instrument Performance */}
+      <div className="premium-card">
+        <h3 className="text-sm font-semibold mb-4">Instrument Performance</h3>
+        <div className="space-y-2">
+          {analytics.instruments.map(([symbol, data]) => (
+            <div key={symbol} className="flex items-center justify-between bg-secondary/50 rounded-lg px-4 py-3">
+              <div>
+                <span className="text-sm font-medium">{symbol}</span>
+                <span className="text-xs text-muted-foreground ml-2">{data.count} trades</span>
+              </div>
+              <span className={`text-sm font-bold ${data.pnl >= 0 ? "" : "text-muted-foreground"}`}>
+                {data.pnl >= 0 ? "+" : ""}${data.pnl.toFixed(2)}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-6 mt-4 text-xs text-muted-foreground">
+          <span>Best: <span className="text-foreground font-medium">{analytics.bestPair}</span></span>
+          <span>Worst: <span className="text-foreground font-medium">{analytics.worstPair}</span></span>
+        </div>
       </div>
     </div>
   );
