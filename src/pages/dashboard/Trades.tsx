@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTradingData } from "@/hooks/use-trading-data";
 import { Search, Download, ListX } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default function Trades() {
   const { hasTrades, trades } = useTradingData();
@@ -21,13 +22,11 @@ export default function Trades() {
       </div>
 
       {!hasTrades ? (
-        <div className="premium-card text-center py-20">
-          <ListX size={48} className="mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">No trades recorded yet</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Your trade history will appear here once you start trading on your challenge account.
-          </p>
-        </div>
+        <EmptyState
+          icon={<ListX size={24} />}
+          title="No trades recorded yet"
+          description="Your trade history will appear here once you start trading on your challenge account."
+        />
       ) : (
         <>
           {/* Filters */}

@@ -120,6 +120,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
               <div className="space-y-2">
                 <Link to="/how-it-works" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("nav.howItWorks")}</Link>
                 <Link to="/faq" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("nav.faq")}</Link>
+                <a href="https://www.fynxfinanceworld.com" target="_blank" rel="noopener noreferrer" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">FYNX Finance World</a>
+                <a href="https://apps.apple.com/app/id6752357210" target="_blank" rel="noopener noreferrer" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">iOS App</a>
               </div>
             </div>
             <div>

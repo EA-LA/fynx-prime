@@ -1,5 +1,6 @@
 import { useTradingData } from "@/hooks/use-trading-data";
 import { Target, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 type RuleStatus = "ok" | "warning" | "violated";
 
@@ -45,13 +46,11 @@ export default function Objectives() {
           <h1 className="text-2xl font-bold tracking-tight">Objectives</h1>
           <p className="text-sm text-muted-foreground mt-1">Track your progress toward each trading objective.</p>
         </div>
-        <div className="premium-card text-center py-20">
-          <Target size={48} className="mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">No active objectives</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Objectives will appear once you have an active challenge account. Start a challenge to begin tracking your progress.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Target size={24} />}
+          title="No active objectives"
+          description="Objectives will appear once you have an active challenge account. Start a challenge to begin tracking your progress."
+        />
       </div>
     );
   }
