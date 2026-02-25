@@ -32,7 +32,7 @@ export default function ChallengeBuilder() {
   };
 
   const handleCreate = () => {
-    navigate("/dashboard");
+    navigate(`/checkout?size=${accountIdx}&phase=${phaseType}&style=${style}&currency=${currency}`);
   };
 
   return (

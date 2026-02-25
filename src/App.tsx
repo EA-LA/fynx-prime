@@ -32,6 +32,10 @@ import ChallengeBuilder from "./pages/ChallengeBuilder";
 import AmlKyc from "./pages/AmlKyc";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import NotFound from "./pages/NotFound";
+import Checkout from "./pages/Checkout";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
+import CheckoutFailure from "./pages/CheckoutFailure";
+import OrderStatus from "./pages/OrderStatus";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +62,10 @@ const App = () => (
               <Route path="/refund-policy" element={<RefundPolicy />} />
               <Route path="/challenge-builder" element={<ChallengeBuilder />} />
               <Route path="/aml-kyc" element={<AmlKyc />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/checkout/success" element={<CheckoutSuccess />} />
+              <Route path="/checkout/failure" element={<CheckoutFailure />} />
+              <Route path="/order-status" element={<OrderStatus />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/dashboard" element={<DashboardLayout />}>
                 <Route index element={<DashboardOverview />} />

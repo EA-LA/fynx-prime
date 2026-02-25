@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Shield, ShieldCheck, ShieldAlert, Mail, Smartphone, Monitor, Key, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Shield, ShieldCheck, ShieldAlert, Mail, Smartphone, Monitor, Key, CheckCircle2, AlertTriangle, Globe2 } from "lucide-react";
+import { countries } from "@/lib/countries";
 
 export default function DashboardSettings() {
   // Profile from signup (read-only)
@@ -7,6 +8,7 @@ export default function DashboardSettings() {
   const email = localStorage.getItem("fynx_user_email") || "";
 
   const [nickname, setNickname] = useState(() => localStorage.getItem("fynx_user_nickname") || "");
+  const [country, setCountry] = useState(() => localStorage.getItem("fynx_user_country") || "");
 
   // Security toggles
   const [emailVerification, setEmailVerification] = useState(false);
@@ -18,8 +20,9 @@ export default function DashboardSettings() {
   // Verification status
   const isVerified = false; // Will be connected to backend later
 
-  const handleSaveNickname = () => {
+  const handleSaveProfile = () => {
     localStorage.setItem("fynx_user_nickname", nickname.trim());
+    localStorage.setItem("fynx_user_country", country);
   };
 
   const Toggle = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
@@ -131,7 +134,7 @@ export default function DashboardSettings() {
             />
             <p className="text-[10px] text-muted-foreground mt-1">Email cannot be changed.</p>
           </div>
-          <div className="sm:col-span-2">
+          <div>
             <label className="text-xs text-muted-foreground block mb-1.5">Display Name (Nickname)</label>
             <input
               type="text"
@@ -142,9 +145,25 @@ export default function DashboardSettings() {
             />
             <p className="text-[10px] text-muted-foreground mt-1">This is your public display name.</p>
           </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1.5 flex items-center gap-1">
+              <Globe2 size={12} /> Country of Trading
+            </label>
+            <select
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 appearance-none"
+            >
+              <option value="">Select country...</option>
+              {countries.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-muted-foreground mt-1">Your country of trading residence.</p>
+          </div>
         </div>
         <button
-          onClick={handleSaveNickname}
+          onClick={handleSaveProfile}
           className="mt-4 bg-primary text-primary-foreground px-6 py-2.5 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           Save Changes
