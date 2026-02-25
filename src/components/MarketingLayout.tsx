@@ -129,6 +129,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                 <Link to="/privacy" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("footer.privacy")}</Link>
                 <Link to="/risk-disclosure" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("footer.risk")}</Link>
                 <Link to="/refund-policy" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">{t("footer.refund")}</Link>
+                <Link to="/aml-kyc" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">AML/KYC Policy</Link>
               </div>
             </div>
             <div>
@@ -152,6 +153,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
               <Link to="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t("footer.privacy")}</Link>
               <Link to="/risk-disclosure" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t("footer.risk")}</Link>
               <Link to="/refund-policy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t("footer.refund")}</Link>
+              <Link to="/aml-kyc" className="text-xs text-muted-foreground hover:text-foreground transition-colors">AML/KYC Policy</Link>
             </div>
             <p className="text-xs text-muted-foreground/70">{t("footer.disclaimer")}</p>
           </div>

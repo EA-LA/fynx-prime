@@ -1,16 +1,10 @@
-import { mockAccounts } from "@/lib/mockData";
 import { Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
-
-const statusStyles: Record<string, string> = {
-  Funded: "bg-foreground/10 text-foreground",
-  "Phase 1": "bg-secondary text-muted-foreground",
-  "Phase 2": "bg-secondary text-muted-foreground",
-  Breached: "bg-secondary text-muted-foreground/60",
-  Passed: "bg-foreground/10 text-foreground",
-};
+import { Wallet, ArrowRight } from "lucide-react";
 
 export default function MyAccounts() {
+  // No demo accounts — show empty state until user buys a challenge
+  const accounts: any[] = [];
+
   return (
     <div className="space-y-6 animate-fade-up">
       <div>
@@ -18,38 +12,25 @@ export default function MyAccounts() {
         <p className="text-sm text-muted-foreground mt-1">View and manage your trading accounts.</p>
       </div>
 
-      <div className="grid gap-4">
-        {mockAccounts.map((acc) => (
-          <div key={acc.id} className="premium-card hover-lift">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold">{acc.id}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyles[acc.status] || "bg-secondary text-muted-foreground"}`}>
-                      {acc.status}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">{acc.plan} • Started {acc.startDate}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-6 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">Balance</p>
-                  <p className="font-medium">${acc.balance.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">P/L</p>
-                  <p className={`font-medium ${acc.pnl >= 0 ? "" : "text-muted-foreground"}`}>
-                    {acc.pnl >= 0 ? "+" : ""}${acc.pnl.toLocaleString()} ({acc.pnlPercent}%)
-                  </p>
-                </div>
-                <ChevronRight size={16} className="text-muted-foreground" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {accounts.length > 0 ? (
+        <div className="grid gap-4">
+          {/* Account cards would render here */}
+        </div>
+      ) : (
+        <div className="premium-card text-center py-16">
+          <Wallet size={40} className="mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No accounts yet</h3>
+          <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+            Purchase a challenge to get started. Your trading accounts will appear here once activated.
+          </p>
+          <Link
+            to="/challenge-builder"
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            Start a Challenge <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
