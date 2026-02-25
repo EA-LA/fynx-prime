@@ -11,6 +11,9 @@ export default function Signup() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Persist name & email for Settings (read-only profile)
+    localStorage.setItem("fynx_user_name", name.trim());
+    localStorage.setItem("fynx_user_email", email.trim());
     navigate("/dashboard");
   };
 
