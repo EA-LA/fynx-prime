@@ -1,14 +1,21 @@
 import { useState } from "react";
 import { Shield, ShieldCheck, ShieldAlert, Mail, Smartphone, Monitor, Key, CheckCircle2, AlertTriangle, Globe2 } from "lucide-react";
 import { countries } from "@/lib/countries";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function DashboardSettings() {
-  // Profile from signup (read-only)
-  const fullName = localStorage.getItem("fynx_user_name") || "";
-  const email = localStorage.getItem("fynx_user_email") || "";
+  const { user, updatePassword } = useAuth();
 
-  const [nickname, setNickname] = useState(() => localStorage.getItem("fynx_user_nickname") || "");
-  const [country, setCountry] = useState(() => localStorage.getItem("fynx_user_country") || "");
+  // Profile from auth context (read-only)
+  const fullName = user?.fullName || "";
+  const email = user?.email || "";
+
+  const [nickname, setNickname] = useState(() => user?.nickname || localStorage.getItem("fynx_user_nickname") || "");
+  const [country, setCountry] = useState(() => user?.country || localStorage.getItem("fynx_user_country") || "");
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwMessage, setPwMessage] = useState("");
 
   // Security toggles
   const [emailVerification, setEmailVerification] = useState(false);
@@ -218,20 +225,44 @@ export default function DashboardSettings() {
       {/* Change Password */}
       <div className="premium-card">
         <h3 className="text-sm font-semibold mb-4">Change Password</h3>
+        {pwMessage && (
+          <p className="text-xs text-muted-foreground mb-3">{pwMessage}</p>
+        )}
         <div className="grid sm:grid-cols-2 gap-4">
           <input
             type="password"
+            value={currentPw}
+            onChange={(e) => setCurrentPw(e.target.value)}
             placeholder="Current password"
             className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30"
           />
           <input
             type="password"
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
             placeholder="New password"
             className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30"
           />
         </div>
-        <button className="mt-4 border border-border px-6 py-2.5 rounded-md text-sm font-medium hover:bg-secondary transition-colors">
-          Update Password
+        <button
+          disabled={pwLoading || !currentPw || !newPw}
+          onClick={async () => {
+            setPwLoading(true);
+            setPwMessage("");
+            try {
+              await updatePassword(currentPw, newPw);
+              setPwMessage("Password updated successfully.");
+              setCurrentPw("");
+              setNewPw("");
+            } catch (err: any) {
+              setPwMessage(err?.message || "Failed to update password.");
+            } finally {
+              setPwLoading(false);
+            }
+          }}
+          className="mt-4 border border-border px-6 py-2.5 rounded-md text-sm font-medium hover:bg-secondary transition-colors disabled:opacity-50"
+        >
+          {pwLoading ? "Updating..." : "Update Password"}
         </button>
       </div>
     </div>
