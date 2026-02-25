@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CreditCard, Wallet, Apple, Globe2, Lock, Shield } from "lucide-react";
 import { challengeConfigs } from "@/lib/challengeConfig";
-
-type PaymentMethod = "card" | "paypal" | "apple" | "crypto";
+import { paymentProvider } from "@/services/payments";
+import { dataService } from "@/services/database";
+import { useAuth } from "@/contexts/AuthContext";
+import type { PaymentMethodType } from "@/services/types";
 
 const cryptoOptions = [
   { id: "btc", label: "Bitcoin (BTC)" },
@@ -15,9 +17,10 @@ const cryptoOptions = [
 export default function Checkout() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const [method, setMethod] = useState<PaymentMethod>("card");
+  const [method, setMethod] = useState<PaymentMethodType>("card");
   const [processing, setProcessing] = useState(false);
   const [cryptoCoin, setCryptoCoin] = useState("usdt");
+  const { user } = useAuth();
 
   // Parse challenge params from URL
   const sizeIdx = parseInt(params.get("size") || "1");
@@ -27,30 +30,46 @@ export default function Checkout() {
 
   const config = challengeConfigs[sizeIdx] || challengeConfigs[1];
   const phaseConfig = config.phases[phase];
-  const orderId = `FX-${Date.now().toString(36).toUpperCase()}`;
 
-  const handlePay = () => {
+  const handlePay = async () => {
     setProcessing(true);
-    setTimeout(() => {
-      // Store order info for success page
-      const order = {
-        id: orderId,
-        challenge: `${config.label} ${phase.replace("-", " ")}`,
+    try {
+      const orderData = {
+        userId: user?.userId || "",
+        challengeId: "",
         amount: phaseConfig.price,
-        method: method === "card" ? "Credit/Debit Card" : method === "paypal" ? "PayPal" : method === "apple" ? "Apple Pay" : `Crypto (${cryptoCoin.toUpperCase()})`,
-        date: new Date().toISOString(),
-        status: "Paid",
+        currency,
+        paymentMethod: method,
+        createdAt: new Date().toISOString(),
+        challenge: `${config.label} ${phase.replace("-", " ")}`,
         accountSize: config.accountSize,
         phase,
         style,
-        currency,
       };
-      localStorage.setItem("fynx_last_order", JSON.stringify(order));
-      navigate("/checkout/success");
-    }, 2000);
+
+      // Create checkout session through payment provider
+      const session = await paymentProvider.createCheckoutSession(orderData, method);
+
+      // Confirm payment (placeholder simulates success)
+      const result = await paymentProvider.confirmPayment(session.sessionId);
+
+      if (result.status === "paid") {
+        // Store orderId for success page to load via dataService
+        localStorage.setItem("fynx_last_order_id", result.orderId);
+        navigate("/checkout/success");
+      } else {
+        await dataService.updateOrderStatus(result.orderId, "failed");
+        navigate("/checkout/failure");
+      }
+    } catch (err) {
+      console.error("[Checkout] Payment failed:", err);
+      navigate("/checkout/failure");
+    } finally {
+      setProcessing(false);
+    }
   };
 
-  const methods: { id: PaymentMethod; label: string; icon: React.ReactNode }[] = [
+  const methods: { id: PaymentMethodType; label: string; icon: React.ReactNode }[] = [
     { id: "card", label: "Credit / Debit Card", icon: <CreditCard size={18} /> },
     { id: "paypal", label: "PayPal", icon: <Globe2 size={18} /> },
     { id: "apple", label: "Apple Pay", icon: <Apple size={18} /> },

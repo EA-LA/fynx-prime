@@ -1,10 +1,53 @@
+import { useState, useEffect } from "react";
 import { useTradingData } from "@/hooks/use-trading-data";
 import { CreditCard, Wallet, ShieldAlert, CheckCircle2, Clock, BookOpen } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import { useAuth } from "@/contexts/AuthContext";
+import { canRequestPayout, getUserPayouts, requestPayout } from "@/services/payouts";
+import type { PayoutRequest } from "@/services/types";
 
 export default function DashboardPayouts() {
   const { hasAccount, payout } = useTradingData();
-  const isVerified = false; // Will connect to KYC backend
+  const { user } = useAuth();
+  const [kycAllowed, setKycAllowed] = useState(false);
+  const [kycReason, setKycReason] = useState("");
+  const [payoutHistory, setPayoutHistory] = useState<PayoutRequest[]>([]);
+  const [payoutAmount, setPayoutAmount] = useState("");
+  const [payoutMethod, setPayoutMethod] = useState("Bank Card");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user?.userId) {
+      canRequestPayout(user.userId).then((result) => {
+        setKycAllowed(result.allowed);
+        setKycReason(result.reason || "");
+      }).catch(console.error);
+
+      getUserPayouts(user.userId).then(setPayoutHistory).catch(console.error);
+    }
+  }, [user?.userId]);
+
+  const isVerified = kycAllowed;
+
+  const handleRequestPayout = async () => {
+    if (!user?.userId || !payoutAmount) return;
+    setSubmitting(true);
+    try {
+      await requestPayout({
+        userId: user.userId,
+        accountId: "",
+        amount: parseFloat(payoutAmount),
+        method: payoutMethod,
+      });
+      const updated = await getUserPayouts(user.userId);
+      setPayoutHistory(updated);
+      setPayoutAmount("");
+    } catch (err) {
+      console.error("[Payouts] Request failed:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (!hasAccount || !payout) {
     return (
@@ -58,6 +101,11 @@ export default function DashboardPayouts() {
     Paid: "bg-secondary text-foreground",
     Rejected: "bg-secondary text-muted-foreground",
     Denied: "bg-secondary text-muted-foreground",
+    requested: "bg-secondary text-muted-foreground",
+    approved: "bg-secondary text-foreground",
+    paid: "bg-secondary text-foreground",
+    denied: "bg-secondary text-muted-foreground",
+    blocked: "bg-secondary text-muted-foreground",
   };
 
   return (
@@ -76,7 +124,9 @@ export default function DashboardPayouts() {
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-semibold">KYC Required for Payouts</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Complete identity verification in Settings before requesting a payout.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {kycReason || "Complete identity verification in Settings before requesting a payout."}
+              </p>
             </div>
             <a href="/dashboard/settings" className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-xs font-medium hover:bg-primary/90 transition-colors shrink-0">
               Verify Now
@@ -127,11 +177,21 @@ export default function DashboardPayouts() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-muted-foreground block mb-1.5">Amount</label>
-                <input type="number" placeholder="$0.00" className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30" />
+                <input
+                  type="number"
+                  value={payoutAmount}
+                  onChange={(e) => setPayoutAmount(e.target.value)}
+                  placeholder="$0.00"
+                  className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30"
+                />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground block mb-1.5">Method</label>
-                <select className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 appearance-none">
+                <select
+                  value={payoutMethod}
+                  onChange={(e) => setPayoutMethod(e.target.value)}
+                  className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 appearance-none"
+                >
                   <option>Bank Card</option>
                   <option>Crypto (USDT)</option>
                   <option>Crypto (BTC)</option>
@@ -139,9 +199,13 @@ export default function DashboardPayouts() {
                 </select>
               </div>
             </div>
-            <button className="mt-4 bg-primary text-primary-foreground px-6 py-2.5 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+            <button
+              onClick={handleRequestPayout}
+              disabled={submitting || !payoutAmount}
+              className="mt-4 bg-primary text-primary-foreground px-6 py-2.5 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
+            >
               <CreditCard size={14} />
-              Submit Request
+              {submitting ? "Submitting..." : "Submit Request"}
             </button>
           </>
         ) : (
@@ -171,8 +235,41 @@ export default function DashboardPayouts() {
         </p>
       </div>
 
-      {/* History */}
-      {payout.history.length > 0 && (
+      {/* History — from service */}
+      {payoutHistory.length > 0 && (
+        <div className="premium-card">
+          <h3 className="text-sm font-semibold mb-4">Payout History</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 font-medium text-muted-foreground text-xs">ID</th>
+                <th className="text-left py-3 font-medium text-muted-foreground text-xs">Date</th>
+                <th className="text-left py-3 font-medium text-muted-foreground text-xs">Method</th>
+                <th className="text-right py-3 font-medium text-muted-foreground text-xs">Amount</th>
+                <th className="text-right py-3 font-medium text-muted-foreground text-xs">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {payoutHistory.map((p) => (
+                <tr key={p.payoutId}>
+                  <td className="py-3 font-medium font-mono text-xs">{p.payoutId}</td>
+                  <td className="py-3 text-muted-foreground">{new Date(p.requestedAt).toLocaleDateString()}</td>
+                  <td className="py-3 text-muted-foreground">{p.method}</td>
+                  <td className="py-3 text-right font-medium">${p.amount.toLocaleString()}</td>
+                  <td className="py-3 text-right">
+                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusClasses[p.status] || "bg-secondary"}`}>
+                      {p.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Legacy payout history from useTradingData (if populated by backend later) */}
+      {payout.history.length > 0 && payoutHistory.length === 0 && (
         <div className="premium-card">
           <h3 className="text-sm font-semibold mb-4">Payout History</h3>
           <table className="w-full text-sm">

@@ -8,22 +8,16 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
     try {
       await signUp(email, password, name.trim());
       navigate("/dashboard");
-    } catch (err: any) {
-      setError(err?.message || "Sign up failed. Please try again.");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error("[Signup] Sign up failed:", err);
     }
   };
 
@@ -36,12 +30,6 @@ export default function Signup() {
           </Link>
           <p className="mt-2 text-sm text-muted-foreground">Create your account and start trading.</p>
         </div>
-
-        {error && (
-          <div className="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-sm text-destructive">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -88,17 +76,9 @@ export default function Signup() {
           </div>
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-primary text-primary-foreground py-2.5 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-primary text-primary-foreground py-2.5 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors"
           >
-            {loading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                Creating account...
-              </>
-            ) : (
-              "Create Account"
-            )}
+            Create Account
           </button>
         </form>
 
