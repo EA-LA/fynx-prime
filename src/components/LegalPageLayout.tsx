@@ -1,9 +1,9 @@
 import MarketingLayout from "./MarketingLayout";
 
-interface Section {
+export interface Section {
   id: string;
   title: string;
-  content: React.ReactNode;
+  content?: React.ReactNode;
 }
 
 interface LegalPageLayoutProps {
@@ -11,9 +11,10 @@ interface LegalPageLayoutProps {
   lastUpdated: string;
   disclaimer?: string;
   sections: Section[];
+  children?: React.ReactNode;
 }
 
-export default function LegalPageLayout({ title, lastUpdated, disclaimer, sections }: LegalPageLayoutProps) {
+export default function LegalPageLayout({ title, lastUpdated, disclaimer, sections, children }: LegalPageLayoutProps) {
   return (
     <MarketingLayout>
       <div className="max-w-4xl mx-auto px-6 py-16">
@@ -45,18 +46,22 @@ export default function LegalPageLayout({ title, lastUpdated, disclaimer, sectio
         </nav>
 
         {/* Sections */}
-        <div className="space-y-10">
-          {sections.map((s, i) => (
-            <section key={s.id} id={s.id} className="scroll-mt-24 animate-fade-up" style={{ animationDelay: `${0.1 + i * 0.03}s` }}>
-              <h2 className="text-lg font-semibold mb-3">
-                {i + 1}. {s.title}
-              </h2>
-              <div className="text-sm text-muted-foreground leading-relaxed space-y-3">
-                {s.content}
-              </div>
-            </section>
-          ))}
-        </div>
+        {children ? (
+          <div className="prose-sm">{children}</div>
+        ) : (
+          <div className="space-y-10">
+            {sections.map((s, i) => (
+              <section key={s.id} id={s.id} className="scroll-mt-24 animate-fade-up" style={{ animationDelay: `${0.1 + i * 0.03}s` }}>
+                <h2 className="text-lg font-semibold mb-3">
+                  {i + 1}. {s.title}
+                </h2>
+                <div className="text-sm text-muted-foreground leading-relaxed space-y-3">
+                  {s.content}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
       </div>
     </MarketingLayout>
   );

@@ -235,12 +235,17 @@ export default function ChallengeBuilder() {
                     className="mt-0.5 accent-foreground"
                   />
                   <span className="text-muted-foreground">
-                    I agree to the{" "}
+                    I confirm I have read and agree to the{" "}
+                    <Link to="/rules" className="text-foreground underline">Rules</Link>,{" "}
                     <Link to="/terms" className="text-foreground underline">Terms & Conditions</Link>,{" "}
                     <Link to="/risk-disclosure" className="text-foreground underline">Risk Disclosure</Link>, and{" "}
                     <Link to="/refund-policy" className="text-foreground underline">Refund Policy</Link>.
                   </span>
                 </label>
+
+                <p className="text-xs text-muted-foreground mt-4 p-3 border border-border rounded-md bg-secondary/30">
+                  We support bank cards and crypto payments (availability may vary by region).
+                </p>
               </div>
             )}
 
