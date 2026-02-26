@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { authService } from "@/services/auth";
 import type { User } from "@/services/types";
 
@@ -23,6 +24,21 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Handle redirect results from signInWithRedirect (Safari)
+  useEffect(() => {
+    let cancelled = false;
+    authService.handleRedirectResult().then((redirectUser) => {
+      if (!cancelled && redirectUser) {
+        setUser(redirectUser);
+        // Navigate to dashboard after redirect auth completes
+        window.location.replace(
+          (import.meta.env.BASE_URL || "/") + "dashboard"
+        );
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChange((u) => {
