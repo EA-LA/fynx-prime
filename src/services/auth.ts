@@ -60,7 +60,10 @@ class FirebaseAuthService implements AuthService {
   private currentUser: User | null = null;
 
   private getAuth() {
-    if (!firebaseAuth) throw new Error("Firebase not configured");
+    if (!firebaseAuth) {
+      console.error("[AuthService] Firebase not configured");
+      throw new Error("Firebase not configured. Please set VITE_FIREBASE_* environment variables.");
+    }
     return firebaseAuth;
   }
 
