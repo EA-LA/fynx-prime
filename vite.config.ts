@@ -5,10 +5,6 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // In production builds (GitHub Pages) → /fynx-prime/
-  // In dev / Lovable preview → /
-  base: mode === "production" ? "/fynx-prime/" : "/",
-
   server: {
     host: "::",
     port: 8080,
@@ -16,9 +12,7 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
-
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -1,8 +1,6 @@
 import { Link } from "react-router-dom";
 import MarketingLayout from "@/components/MarketingLayout";
 import CinematicBackground from "@/components/CinematicBackground";
-import { lazy, Suspense } from "react";
-const HeroSphere = lazy(() => import("@/components/HeroSphere"));
 import { plans, testimonials, faqItems } from "@/lib/mockData";
 import {
   ArrowRight,
@@ -42,11 +40,8 @@ export default function Index() {
     <MarketingLayout>
       <CinematicBackground />
       {/* Hero */}
-      <section className="relative dot-grid overflow-hidden">
-        <Suspense fallback={null}>
-          <HeroSphere />
-        </Suspense>
-        <div className="max-w-7xl mx-auto px-6 py-32 md:py-44 relative z-10">
+      <section className="relative dot-grid">
+        <div className="max-w-7xl mx-auto px-6 py-32 md:py-44">
           <div className="max-w-3xl">
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] animate-fade-up">
               Get Funded.

@@ -27,16 +27,6 @@
         } catch(e) {}
       })();
     </script>
-    <!-- GitHub Pages SPA: restore route from 404.html redirect -->
-    <script>
-      (function(){
-        var redirect = sessionStorage.redirect;
-        delete sessionStorage.redirect;
-        if (redirect && redirect !== location.href) {
-          history.replaceState(null, null, redirect);
-        }
-      })();
-    </script>
   </head>
 
   <body>
