@@ -14,7 +14,9 @@ import {
   EmailAuthProvider,
   GoogleAuthProvider,
   OAuthProvider,
+  signInWithRedirect,
   signInWithPopup,
+  getRedirectResult,
   updateProfile,
 } from "firebase/auth";
 import { auth as firebaseAuth, isFirebaseConfigured } from "@/lib/firebase";
@@ -31,6 +33,7 @@ export interface AuthService {
   onAuthStateChange(callback: (user: User | null) => void): () => void;
   updatePassword(currentPassword: string, newPassword: string): Promise<void>;
   sendEmailVerification(): Promise<void>;
+  handleRedirectResult(): Promise<User | null>;
 }
 
 // ── Firebase adapter ──────────────────────────────────────
@@ -46,6 +49,11 @@ function firebaseUserToUser(fbUser: import("firebase/auth").User): User {
     emailVerified: fbUser.emailVerified,
     kycStatus: "not_started",
   };
+}
+
+function isSafari(): boolean {
+  const ua = navigator.userAgent;
+  return /^((?!chrome|android).)*safari/i.test(ua);
 }
 
 class FirebaseAuthService implements AuthService {
@@ -74,6 +82,11 @@ class FirebaseAuthService implements AuthService {
 
   async signInWithGoogle(): Promise<User> {
     const provider = new GoogleAuthProvider();
+    if (isSafari()) {
+      await signInWithRedirect(this.getAuth(), provider);
+      // Redirect will navigate away; result handled by handleRedirectResult
+      return {} as User;
+    }
     const cred = await signInWithPopup(this.getAuth(), provider);
     const user = firebaseUserToUser(cred.user);
     this.currentUser = user;
@@ -84,10 +97,28 @@ class FirebaseAuthService implements AuthService {
     const provider = new OAuthProvider("apple.com");
     provider.addScope("email");
     provider.addScope("name");
+    if (isSafari()) {
+      await signInWithRedirect(this.getAuth(), provider);
+      return {} as User;
+    }
     const cred = await signInWithPopup(this.getAuth(), provider);
     const user = firebaseUserToUser(cred.user);
     this.currentUser = user;
     return user;
+  }
+
+  async handleRedirectResult(): Promise<User | null> {
+    try {
+      const result = await getRedirectResult(this.getAuth());
+      if (result?.user) {
+        const user = firebaseUserToUser(result.user);
+        this.currentUser = user;
+        return user;
+      }
+    } catch (err) {
+      console.error("[AuthService] Redirect result error:", err);
+    }
+    return null;
   }
 
   async signOut(): Promise<void> {
@@ -171,8 +202,15 @@ class LocalAuthService implements AuthService {
     return user;
   }
 
-  async signInWithGoogle(): Promise<User> { throw new Error("Google sign-in requires Firebase configuration"); }
-  async signInWithApple(): Promise<User> { throw new Error("Apple sign-in requires Firebase configuration"); }
+  async signInWithGoogle(): Promise<User> {
+    console.error("[AuthService] Google sign-in requires Firebase configuration");
+    throw new Error("Google sign-in requires Firebase configuration");
+  }
+  async signInWithApple(): Promise<User> {
+    console.error("[AuthService] Apple sign-in requires Firebase configuration");
+    throw new Error("Apple sign-in requires Firebase configuration");
+  }
+  async handleRedirectResult(): Promise<User | null> { return null; }
   async signOut(): Promise<void> { this.persist(null); }
   async resetPassword(_email: string): Promise<void> { console.log("[AuthService] Password reset (local mode)"); }
   getCurrentUser(): User | null { return this.currentUser; }
