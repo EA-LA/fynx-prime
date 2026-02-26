@@ -10,22 +10,14 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
 };
 
-export const isFirebaseConfigured = !!(firebaseConfig.apiKey && firebaseConfig.projectId);
+export const isFirebaseConfigured = !!firebaseConfig.apiKey;
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 
 if (isFirebaseConfigured) {
-  try {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-  } catch (err) {
-    console.error("[Firebase] Init failed, running without auth:", err);
-    app = null;
-    auth = null;
-  }
-} else {
-  console.warn("[Firebase] Not configured — using local auth fallback");
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
 }
 
 export { app, auth };
