@@ -49,7 +49,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <BrowserRouter basename="/fynx-prime">
             <AuthProvider>
               <Routes>
                 {/* Public routes */}
