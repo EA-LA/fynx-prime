@@ -11,6 +11,8 @@ interface AuthContextValue {
   loading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (current: string, newPw: string) => Promise<void>;
@@ -38,6 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authService.signIn(email, password);
   };
 
+  const signInWithGoogle = async () => {
+    await authService.signInWithGoogle();
+  };
+
+  const signInWithApple = async () => {
+    await authService.signInWithApple();
+  };
+
   const signOut = async () => {
     await authService.signOut();
   };
@@ -51,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, signInWithGoogle, signInWithApple, signOut, resetPassword, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );

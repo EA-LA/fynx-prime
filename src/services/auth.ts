@@ -1,14 +1,30 @@
 // ═══════════════════════════════════════════════════════════
-// AUTH SERVICE — Firebase-ready adapter
+// AUTH SERVICE — Firebase Auth adapter
 // ═══════════════════════════════════════════════════════════
-// Replace the placeholder implementations with Firebase Auth
-// calls (e.g. createUserWithEmailAndPassword, signInWithEmailAndPassword, etc.)
 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  onAuthStateChanged,
+  updatePassword as firebaseUpdatePassword,
+  sendEmailVerification as firebaseSendEmailVerification,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  GoogleAuthProvider,
+  OAuthProvider,
+  signInWithPopup,
+  updateProfile,
+} from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import type { User } from "./types";
 
 export interface AuthService {
   signUp(email: string, password: string, fullName: string): Promise<User>;
   signIn(email: string, password: string): Promise<User>;
+  signInWithGoogle(): Promise<User>;
+  signInWithApple(): Promise<User>;
   signOut(): Promise<void>;
   resetPassword(email: string): Promise<void>;
   getCurrentUser(): User | null;
@@ -17,79 +33,63 @@ export interface AuthService {
   sendEmailVerification(): Promise<void>;
 }
 
-// ── Placeholder adapter (localStorage-based) ──────────────
-// This is the drop-in replacement target. Swap this class
-// with FirebaseAuthService when ready.
+function firebaseUserToUser(fbUser: import("firebase/auth").User): User {
+  return {
+    userId: fbUser.uid,
+    email: fbUser.email || "",
+    fullName: fbUser.displayName || "",
+    nickname: "",
+    country: "",
+    createdAt: fbUser.metadata.creationTime || new Date().toISOString(),
+    emailVerified: fbUser.emailVerified,
+    kycStatus: "not_started",
+  };
+}
 
-class LocalAuthService implements AuthService {
-  private listeners: Array<(user: User | null) => void> = [];
+class FirebaseAuthService implements AuthService {
   private currentUser: User | null = null;
 
-  constructor() {
-    // Restore session
-    const stored = localStorage.getItem("fynx_session");
-    if (stored) {
-      try {
-        this.currentUser = JSON.parse(stored);
-      } catch {
-        this.currentUser = null;
-      }
-    }
-  }
-
-  private persist(user: User | null) {
-    this.currentUser = user;
-    if (user) {
-      localStorage.setItem("fynx_session", JSON.stringify(user));
-      localStorage.setItem("fynx_user_name", user.fullName);
-      localStorage.setItem("fynx_user_email", user.email);
-    } else {
-      localStorage.removeItem("fynx_session");
-    }
-    this.listeners.forEach((cb) => cb(user));
-  }
-
   async signUp(email: string, password: string, fullName: string): Promise<User> {
-    // 🔌 Replace with: firebase.auth().createUserWithEmailAndPassword(email, password)
-    const user: User = {
-      userId: `usr_${Date.now().toString(36)}`,
-      email,
-      fullName,
-      nickname: "",
-      country: "",
-      createdAt: new Date().toISOString(),
-      emailVerified: false,
-      kycStatus: "not_started",
-    };
-    this.persist(user);
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(cred.user, { displayName: fullName });
+    const user = firebaseUserToUser(cred.user);
+    user.fullName = fullName;
+    this.currentUser = user;
     return user;
   }
 
   async signIn(email: string, password: string): Promise<User> {
-    // 🔌 Replace with: firebase.auth().signInWithEmailAndPassword(email, password)
-    const existingName = localStorage.getItem("fynx_user_name") || "Trader";
-    const user: User = {
-      userId: `usr_${Date.now().toString(36)}`,
-      email,
-      fullName: existingName,
-      nickname: localStorage.getItem("fynx_user_nickname") || "",
-      country: localStorage.getItem("fynx_user_country") || "",
-      createdAt: new Date().toISOString(),
-      emailVerified: false,
-      kycStatus: "not_started",
-    };
-    this.persist(user);
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const user = firebaseUserToUser(cred.user);
+    this.currentUser = user;
+    return user;
+  }
+
+  async signInWithGoogle(): Promise<User> {
+    const provider = new GoogleAuthProvider();
+    const cred = await signInWithPopup(auth, provider);
+    const user = firebaseUserToUser(cred.user);
+    this.currentUser = user;
+    return user;
+  }
+
+  async signInWithApple(): Promise<User> {
+    const provider = new OAuthProvider("apple.com");
+    provider.addScope("email");
+    provider.addScope("name");
+    const cred = await signInWithPopup(auth, provider);
+    const user = firebaseUserToUser(cred.user);
+    this.currentUser = user;
     return user;
   }
 
   async signOut(): Promise<void> {
-    // 🔌 Replace with: firebase.auth().signOut()
-    this.persist(null);
+    await firebaseSignOut(auth);
+    this.currentUser = null;
   }
 
   async resetPassword(email: string): Promise<void> {
-    // 🔌 Replace with: firebase.auth().sendPasswordResetEmail(email)
-    console.log(`[AuthService] Password reset sent to ${email}`);
+    await sendPasswordResetEmail(auth, email);
   }
 
   getCurrentUser(): User | null {
@@ -97,24 +97,27 @@ class LocalAuthService implements AuthService {
   }
 
   onAuthStateChange(callback: (user: User | null) => void): () => void {
-    this.listeners.push(callback);
-    // Fire immediately with current state
-    callback(this.currentUser);
-    return () => {
-      this.listeners = this.listeners.filter((cb) => cb !== callback);
-    };
+    return onAuthStateChanged(auth, (fbUser) => {
+      const user = fbUser ? firebaseUserToUser(fbUser) : null;
+      this.currentUser = user;
+      callback(user);
+    });
   }
 
-  async updatePassword(_current: string, _newPw: string): Promise<void> {
-    // 🔌 Replace with: firebase reauthenticate + updatePassword
-    console.log("[AuthService] Password updated");
+  async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const fbUser = auth.currentUser;
+    if (!fbUser || !fbUser.email) throw new Error("Not authenticated");
+    const credential = EmailAuthProvider.credential(fbUser.email, currentPassword);
+    await reauthenticateWithCredential(fbUser, credential);
+    await firebaseUpdatePassword(fbUser, newPassword);
   }
 
   async sendEmailVerification(): Promise<void> {
-    // 🔌 Replace with: firebase.auth().currentUser.sendEmailVerification()
-    console.log("[AuthService] Verification email sent");
+    const fbUser = auth.currentUser;
+    if (!fbUser) throw new Error("Not authenticated");
+    await firebaseSendEmailVerification(fbUser);
   }
 }
 
 // Singleton export
-export const authService: AuthService = new LocalAuthService();
+export const authService: AuthService = new FirebaseAuthService();
