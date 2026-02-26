@@ -17,6 +17,7 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (current: string, newPw: string) => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -53,7 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    await authService.signIn(email, password);
+    const loggedInUser = await authService.signIn(email, password);
+    // Enforce email verification for email/password logins
+    if (loggedInUser && !loggedInUser.emailVerified) {
+      console.error("[Auth] Email not verified. Signing out. Please verify your email first.");
+      await authService.signOut();
+      throw new Error("Email not verified. Please check your inbox and verify your email before logging in.");
+    }
   };
 
   const signInWithGoogle = async () => {
@@ -76,8 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authService.updatePassword(current, newPw);
   };
 
+  const resendVerificationEmail = async () => {
+    await authService.sendEmailVerification();
+    console.log("[Auth] Verification email resent");
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signInWithGoogle, signInWithApple, signOut, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, signInWithGoogle, signInWithApple, signOut, resetPassword, updatePassword, resendVerificationEmail }}>
       {children}
     </AuthContext.Provider>
   );

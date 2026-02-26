@@ -67,6 +67,9 @@ class FirebaseAuthService implements AuthService {
   async signUp(email: string, password: string, fullName: string): Promise<User> {
     const cred = await createUserWithEmailAndPassword(this.getAuth(), email, password);
     await updateProfile(cred.user, { displayName: fullName });
+    // Send verification email immediately after account creation
+    await firebaseSendEmailVerification(cred.user);
+    console.log("[AuthService] Verification email sent to", email);
     const user = firebaseUserToUser(cred.user);
     user.fullName = fullName;
     this.currentUser = user;
@@ -82,11 +85,6 @@ class FirebaseAuthService implements AuthService {
 
   async signInWithGoogle(): Promise<User> {
     const provider = new GoogleAuthProvider();
-    if (isSafari()) {
-      await signInWithRedirect(this.getAuth(), provider);
-      // Redirect will navigate away; result handled by handleRedirectResult
-      return {} as User;
-    }
     const cred = await signInWithPopup(this.getAuth(), provider);
     const user = firebaseUserToUser(cred.user);
     this.currentUser = user;
@@ -192,6 +190,21 @@ class LocalAuthService implements AuthService {
   }
 
   async signIn(email: string, _password: string): Promise<User> {
+    // In local mode, only allow sign-in if user was previously registered
+    const stored = localStorage.getItem("fynx_session");
+    if (stored) {
+      try {
+        const existing = JSON.parse(stored);
+        if (existing.email === email) {
+          this.persist(existing);
+          return existing;
+        }
+      } catch { /* ignore */ }
+    }
+    const registeredEmail = localStorage.getItem("fynx_user_email");
+    if (registeredEmail !== email) {
+      throw new Error("auth/user-not-found");
+    }
     const user: User = {
       userId: `usr_${Date.now().toString(36)}`, email,
       fullName: localStorage.getItem("fynx_user_name") || "Trader",
