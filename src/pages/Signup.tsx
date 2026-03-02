@@ -8,25 +8,47 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
   const { signUp, signInWithGoogle, signInWithApple } = useAuth();
 
   const handleGoogle = async () => {
-    try { await signInWithGoogle(); navigate("/dashboard"); } catch (err) { console.error("[Signup] Google sign-in failed:", err); }
+    try { setError(""); await signInWithGoogle(); navigate("/dashboard"); } catch (err: any) { setError(err?.message || "Google sign-in failed"); }
   };
   const handleApple = async () => {
-    try { await signInWithApple(); navigate("/dashboard"); } catch (err) { console.error("[Signup] Apple sign-in failed:", err); }
+    try { setError(""); await signInWithApple(); } catch (err: any) { setError(err?.message || "Apple sign-in failed"); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     try {
       await signUp(email, password, name.trim());
-      navigate("/dashboard");
-    } catch (err) {
-      console.error("[Signup] Sign up failed:", err);
+      setSignupSuccess(true);
+    } catch (err: any) {
+      setError(err?.message || "Sign up failed");
     }
   };
+
+  if (signupSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center dot-grid relative px-6">
+        <div className="w-full max-w-sm animate-fade-up text-center">
+          <div className="mb-6">
+            <Link to="/" className="text-2xl font-bold tracking-tight">
+              FYNX<span className="text-muted-foreground font-light ml-1">Funded</span>
+            </Link>
+          </div>
+          <h2 className="text-lg font-semibold mb-2">Check your email</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            We've sent a verification link to <strong>{email}</strong>. Please verify your email before logging in.
+          </p>
+          <Link to="/login" className="text-sm text-foreground hover:underline">Go to Login</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center dot-grid relative px-6">
@@ -37,6 +59,8 @@ export default function Signup() {
           </Link>
           <p className="mt-2 text-sm text-muted-foreground">Create your account and start trading.</p>
         </div>
+
+        {error && <p className="text-sm text-destructive mb-4 text-center">{error}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
