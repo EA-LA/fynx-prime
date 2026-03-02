@@ -7,23 +7,25 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
   const { signIn, signInWithGoogle, signInWithApple } = useAuth();
 
   const handleGoogle = async () => {
-    try { await signInWithGoogle(); navigate("/dashboard"); } catch (err) { console.error("[Login] Google sign-in failed:", err); }
+    try { setError(""); await signInWithGoogle(); navigate("/dashboard"); } catch (err: any) { setError(err?.message || "Google sign-in failed"); }
   };
   const handleApple = async () => {
-    try { await signInWithApple(); navigate("/dashboard"); } catch (err) { console.error("[Login] Apple sign-in failed:", err); }
+    try { setError(""); await signInWithApple(); } catch (err: any) { setError(err?.message || "Apple sign-in failed"); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     try {
       await signIn(email, password);
       navigate("/dashboard");
-    } catch (err) {
-      console.error("[Login] Sign in failed:", err);
+    } catch (err: any) {
+      setError(err?.message || "Sign in failed");
     }
   };
 
@@ -36,6 +38,8 @@ export default function Login() {
           </Link>
           <p className="mt-2 text-sm text-muted-foreground">Welcome back. Log in to your dashboard.</p>
         </div>
+
+        {error && <p className="text-sm text-destructive mb-4 text-center">{error}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
