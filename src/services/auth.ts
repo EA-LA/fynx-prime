@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// AUTH SERVICE — Firebase Auth adapter with local fallback
+// AUTH SERVICE — Firebase Auth + Firestore adapter
 // ═══════════════════════════════════════════════════════════
 
 import {
@@ -19,7 +19,13 @@ import {
   getRedirectResult,
   updateProfile,
 } from "firebase/auth";
-import { auth as firebaseAuth, isFirebaseConfigured } from "@/lib/firebase";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { auth as firebaseAuth, db as firebaseDb, isFirebaseConfigured } from "@/lib/firebase";
 import type { User } from "./types";
 
 export interface AuthService {
@@ -36,7 +42,33 @@ export interface AuthService {
   handleRedirectResult(): Promise<User | null>;
 }
 
-// ── Firebase adapter ──────────────────────────────────────
+// ── Firestore user doc helpers ────────────────────────────
+
+async function createOrUpdateFirestoreUser(
+  uid: string,
+  data: { email: string; displayName: string; provider: string },
+) {
+  if (!firebaseDb) return;
+  const userRef = doc(firebaseDb, "users", uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      uid,
+      email: data.email,
+      displayName: data.displayName,
+      provider: data.provider,
+      createdAt: serverTimestamp(),
+    });
+  }
+}
+
+async function readFirestoreUser(uid: string): Promise<Record<string, unknown> | null> {
+  if (!firebaseDb) return null;
+  const snap = await getDoc(doc(firebaseDb, "users", uid));
+  return snap.exists() ? (snap.data() as Record<string, unknown>) : null;
+}
+
+// ── Map Firebase user → app User ─────────────────────────
 
 function firebaseUserToUser(fbUser: import("firebase/auth").User): User {
   return {
@@ -56,6 +88,8 @@ function isSafari(): boolean {
   return /^((?!chrome|android).)*safari/i.test(ua);
 }
 
+// ── Firebase adapter ──────────────────────────────────────
+
 class FirebaseAuthService implements AuthService {
   private currentUser: User | null = null;
 
@@ -67,14 +101,40 @@ class FirebaseAuthService implements AuthService {
   async signUp(email: string, password: string, fullName: string): Promise<User> {
     const cred = await createUserWithEmailAndPassword(this.getAuth(), email, password);
     await updateProfile(cred.user, { displayName: fullName });
+
+    // Send verification email
+    await firebaseSendEmailVerification(cred.user);
+
+    // Create Firestore user document
+    await createOrUpdateFirestoreUser(cred.user.uid, {
+      email,
+      displayName: fullName,
+      provider: "email",
+    });
+
     const user = firebaseUserToUser(cred.user);
     user.fullName = fullName;
     this.currentUser = user;
+
+    // Sign out immediately — user must verify email before logging in
+    await firebaseSignOut(this.getAuth());
+    this.currentUser = null;
+
     return user;
   }
 
   async signIn(email: string, password: string): Promise<User> {
     const cred = await signInWithEmailAndPassword(this.getAuth(), email, password);
+
+    // Block login if email is not verified
+    if (!cred.user.emailVerified) {
+      await firebaseSignOut(this.getAuth());
+      throw new Error("Please verify your email before logging in. Check your inbox for the verification link.");
+    }
+
+    // Read Firestore user data
+    await readFirestoreUser(cred.user.uid);
+
     const user = firebaseUserToUser(cred.user);
     this.currentUser = user;
     return user;
@@ -84,12 +144,19 @@ class FirebaseAuthService implements AuthService {
     const provider = new GoogleAuthProvider();
     if (isSafari()) {
       await signInWithRedirect(this.getAuth(), provider);
-      // Redirect will navigate away; result handled by handleRedirectResult
       return {} as User;
     }
     const cred = await signInWithPopup(this.getAuth(), provider);
     const user = firebaseUserToUser(cred.user);
     this.currentUser = user;
+
+    // Create Firestore doc for social login
+    await createOrUpdateFirestoreUser(cred.user.uid, {
+      email: cred.user.email || "",
+      displayName: cred.user.displayName || "",
+      provider: "google",
+    });
+
     return user;
   }
 
@@ -97,14 +164,9 @@ class FirebaseAuthService implements AuthService {
     const provider = new OAuthProvider("apple.com");
     provider.addScope("email");
     provider.addScope("name");
-    if (isSafari()) {
-      await signInWithRedirect(this.getAuth(), provider);
-      return {} as User;
-    }
-    const cred = await signInWithPopup(this.getAuth(), provider);
-    const user = firebaseUserToUser(cred.user);
-    this.currentUser = user;
-    return user;
+    // Apple always uses redirect for best compatibility
+    await signInWithRedirect(this.getAuth(), provider);
+    return {} as User;
   }
 
   async handleRedirectResult(): Promise<User | null> {
@@ -113,6 +175,17 @@ class FirebaseAuthService implements AuthService {
       if (result?.user) {
         const user = firebaseUserToUser(result.user);
         this.currentUser = user;
+
+        // Determine provider
+        const providerId = result.providerId || "oauth";
+        const providerName = providerId.includes("apple") ? "apple" : providerId.includes("google") ? "google" : providerId;
+
+        await createOrUpdateFirestoreUser(result.user.uid, {
+          email: result.user.email || "",
+          displayName: result.user.displayName || "",
+          provider: providerName,
+        });
+
         return user;
       }
     } catch (err) {
