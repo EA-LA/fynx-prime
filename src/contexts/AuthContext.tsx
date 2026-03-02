@@ -3,7 +3,6 @@
 // ═══════════════════════════════════════════════════════════
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
 import { authService } from "@/services/auth";
 import type { User } from "@/services/types";
 
@@ -17,6 +16,8 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (current: string, newPw: string) => Promise<void>;
+  sendEmailVerification: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -31,7 +32,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authService.handleRedirectResult().then((redirectUser) => {
       if (!cancelled && redirectUser) {
         setUser(redirectUser);
-        // Navigate to dashboard after redirect auth completes
         window.location.replace(
           (import.meta.env.BASE_URL || "/") + "dashboard"
         );
@@ -76,8 +76,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authService.updatePassword(current, newPw);
   };
 
+  const sendEmailVerification = async () => {
+    await authService.sendEmailVerification();
+  };
+
+  const refreshUser = async () => {
+    const refreshed = await authService.refreshCurrentUser();
+    if (refreshed) setUser(refreshed);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signInWithGoogle, signInWithApple, signOut, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, signInWithGoogle, signInWithApple, signOut, resetPassword, updatePassword, sendEmailVerification, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

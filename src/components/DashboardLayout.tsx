@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 
 const sidebarLinks = [
   { label: "Overview", to: "/dashboard", icon: LayoutDashboard },
@@ -34,7 +35,7 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
 
   const isActive = (path: string) => {
     if (path === "/dashboard") return location.pathname === "/dashboard";
@@ -81,11 +82,11 @@ export default function DashboardLayout() {
         <div className="p-3 border-t border-sidebar-border">
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-semibold text-sidebar-accent-foreground">
-              JD
+              {(user?.fullName || "U").charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">John Doe</p>
-              <p className="text-xs text-sidebar-foreground/50 truncate">trader@example.com</p>
+              <p className="text-sm font-medium text-sidebar-foreground truncate">{user?.fullName || "Trader"}</p>
+              <p className="text-xs text-sidebar-foreground/50 truncate">{user?.email || ""}</p>
             </div>
           </div>
           <button
@@ -124,6 +125,7 @@ export default function DashboardLayout() {
         </header>
 
         <main className="p-6 lg:p-8">
+          <EmailVerificationBanner />
           <Outlet />
         </main>
       </div>

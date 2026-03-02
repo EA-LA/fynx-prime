@@ -18,14 +18,14 @@ export default function DashboardPayouts() {
 
   useEffect(() => {
     if (user?.userId) {
-      canRequestPayout(user.userId).then((result) => {
+      canRequestPayout(user.userId, user.emailVerified).then((result) => {
         setKycAllowed(result.allowed);
         setKycReason(result.reason || "");
       }).catch(console.error);
 
       getUserPayouts(user.userId).then(setPayoutHistory).catch(console.error);
     }
-  }, [user?.userId]);
+  }, [user?.userId, user?.emailVerified]);
 
   const isVerified = kycAllowed;
 
