@@ -26,6 +26,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { auth as firebaseAuth, db as firebaseDb, isFirebaseConfigured } from "@/lib/firebase";
+import { recordLoginSession } from "@/services/session-tracker";
 import type { User } from "./types";
 
 export interface AuthService {
@@ -40,6 +41,7 @@ export interface AuthService {
   updatePassword(currentPassword: string, newPassword: string): Promise<void>;
   sendEmailVerification(): Promise<void>;
   handleRedirectResult(): Promise<User | null>;
+  refreshCurrentUser(): Promise<User | null>;
 }
 
 // ── Firestore user doc helpers ────────────────────────────
@@ -60,12 +62,6 @@ async function createOrUpdateFirestoreUser(
       createdAt: serverTimestamp(),
     });
   }
-}
-
-async function readFirestoreUser(uid: string): Promise<Record<string, unknown> | null> {
-  if (!firebaseDb) return null;
-  const snap = await getDoc(doc(firebaseDb, "users", uid));
-  return snap.exists() ? (snap.data() as Record<string, unknown>) : null;
 }
 
 // ── Map Firebase user → app User ─────────────────────────
@@ -101,11 +97,8 @@ class FirebaseAuthService implements AuthService {
   async signUp(email: string, password: string, fullName: string): Promise<User> {
     const cred = await createUserWithEmailAndPassword(this.getAuth(), email, password);
     await updateProfile(cred.user, { displayName: fullName });
-
-    // Send verification email
     await firebaseSendEmailVerification(cred.user);
 
-    // Create Firestore user document
     await createOrUpdateFirestoreUser(cred.user.uid, {
       email,
       displayName: fullName,
@@ -116,7 +109,7 @@ class FirebaseAuthService implements AuthService {
     user.fullName = fullName;
     this.currentUser = user;
 
-    // Sign out immediately — user must verify email before logging in
+    // Sign out — user must verify email before logging in
     await firebaseSignOut(this.getAuth());
     this.currentUser = null;
 
@@ -132,11 +125,12 @@ class FirebaseAuthService implements AuthService {
       throw new Error("Please verify your email before logging in. Check your inbox for the verification link.");
     }
 
-    // Read Firestore user data
-    await readFirestoreUser(cred.user.uid);
-
     const user = firebaseUserToUser(cred.user);
     this.currentUser = user;
+
+    // Record session
+    recordLoginSession(user.userId).catch(console.error);
+
     return user;
   }
 
@@ -150,12 +144,14 @@ class FirebaseAuthService implements AuthService {
     const user = firebaseUserToUser(cred.user);
     this.currentUser = user;
 
-    // Create Firestore doc for social login
     await createOrUpdateFirestoreUser(cred.user.uid, {
       email: cred.user.email || "",
       displayName: cred.user.displayName || "",
       provider: "google",
     });
+
+    // Record session
+    recordLoginSession(user.userId).catch(console.error);
 
     return user;
   }
@@ -164,7 +160,6 @@ class FirebaseAuthService implements AuthService {
     const provider = new OAuthProvider("apple.com");
     provider.addScope("email");
     provider.addScope("name");
-    // Apple always uses redirect for best compatibility
     await signInWithRedirect(this.getAuth(), provider);
     return {} as User;
   }
@@ -176,7 +171,6 @@ class FirebaseAuthService implements AuthService {
         const user = firebaseUserToUser(result.user);
         this.currentUser = user;
 
-        // Determine provider
         const providerId = result.providerId || "oauth";
         const providerName = providerId.includes("apple") ? "apple" : providerId.includes("google") ? "google" : providerId;
 
@@ -185,6 +179,9 @@ class FirebaseAuthService implements AuthService {
           displayName: result.user.displayName || "",
           provider: providerName,
         });
+
+        // Record session after redirect login
+        recordLoginSession(user.userId).catch(console.error);
 
         return user;
       }
@@ -200,7 +197,9 @@ class FirebaseAuthService implements AuthService {
   }
 
   async resetPassword(email: string): Promise<void> {
-    await sendPasswordResetEmail(this.getAuth(), email);
+    await sendPasswordResetEmail(this.getAuth(), email, {
+      url: window.location.origin + (import.meta.env.BASE_URL || "/") + "login",
+    });
   }
 
   getCurrentUser(): User | null {
@@ -227,6 +226,15 @@ class FirebaseAuthService implements AuthService {
     const fbUser = this.getAuth().currentUser;
     if (!fbUser) throw new Error("Not authenticated");
     await firebaseSendEmailVerification(fbUser);
+  }
+
+  async refreshCurrentUser(): Promise<User | null> {
+    const fbUser = this.getAuth().currentUser;
+    if (!fbUser) return null;
+    await fbUser.reload();
+    const user = firebaseUserToUser(fbUser);
+    this.currentUser = user;
+    return user;
   }
 }
 
@@ -276,11 +284,9 @@ class LocalAuthService implements AuthService {
   }
 
   async signInWithGoogle(): Promise<User> {
-    console.error("[AuthService] Google sign-in requires Firebase configuration");
     throw new Error("Google sign-in requires Firebase configuration");
   }
   async signInWithApple(): Promise<User> {
-    console.error("[AuthService] Apple sign-in requires Firebase configuration");
     throw new Error("Apple sign-in requires Firebase configuration");
   }
   async handleRedirectResult(): Promise<User | null> { return null; }
@@ -296,9 +302,9 @@ class LocalAuthService implements AuthService {
 
   async updatePassword(): Promise<void> { console.log("[AuthService] Password updated (local mode)"); }
   async sendEmailVerification(): Promise<void> { console.log("[AuthService] Verification email (local mode)"); }
+  async refreshCurrentUser(): Promise<User | null> { return this.currentUser; }
 }
 
-// Pick adapter based on whether Firebase keys are present
 export const authService: AuthService = isFirebaseConfigured
   ? new FirebaseAuthService()
   : new LocalAuthService();

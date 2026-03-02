@@ -17,7 +17,10 @@ export async function updateKycStatus(userId: string, status: KycStatus): Promis
   await dataService.updateUser(userId, { kycStatus: status });
 }
 
-export async function canRequestPayout(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+export async function canRequestPayout(userId: string, emailVerified?: boolean): Promise<{ allowed: boolean; reason?: string }> {
+  if (emailVerified === false) {
+    return { allowed: false, reason: "Email verification is required before requesting a payout." };
+  }
   const kyc = await getKycStatus(userId);
   if (kyc !== "verified") {
     return { allowed: false, reason: "KYC verification must be completed before requesting a payout." };
