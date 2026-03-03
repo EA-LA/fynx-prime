@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { mapFirebaseError } from "@/lib/auth-error-map";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -18,7 +19,7 @@ export default function ForgotPassword() {
       await resetPassword(email);
       setSent(true);
     } catch (err: any) {
-      setError(err?.message || "Failed to send reset email.");
+      setError(mapFirebaseError(err));
     } finally {
       setLoading(false);
     }

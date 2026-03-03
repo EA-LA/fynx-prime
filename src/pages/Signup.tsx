@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { mapFirebaseError } from "@/lib/auth-error-map";
 
 export default function Signup() {
   const [name, setName] = useState("");
@@ -14,10 +15,10 @@ export default function Signup() {
   const { signUp, signInWithGoogle, signInWithApple } = useAuth();
 
   const handleGoogle = async () => {
-    try { setError(""); await signInWithGoogle(); navigate("/dashboard"); } catch (err: any) { setError(err?.message || "Google sign-in failed"); }
+    try { setError(""); await signInWithGoogle(); navigate("/dashboard"); } catch (err: any) { setError(mapFirebaseError(err)); }
   };
   const handleApple = async () => {
-    try { setError(""); await signInWithApple(); } catch (err: any) { setError(err?.message || "Apple sign-in failed"); }
+    try { setError(""); await signInWithApple(); } catch (err: any) { setError(mapFirebaseError(err)); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,7 +39,7 @@ export default function Signup() {
       await signUp(email, password, name.trim());
       setSignupSuccess(true);
     } catch (err: any) {
-      setError(err?.message || "Sign up failed");
+      setError(mapFirebaseError(err));
     }
   };
 
