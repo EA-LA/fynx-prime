@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { mapFirebaseError } from "@/lib/auth-error-map";
@@ -10,13 +10,19 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
   const { signIn, signInWithGoogle, signInWithApple } = useAuth();
 
+  // Show message from redirect (e.g. email verification required)
+  const redirectMessage = (location.state as any)?.message || "";
+
   const handleGoogle = async () => {
-    try { setError(""); await signInWithGoogle(); navigate("/dashboard"); } catch (err: any) { setError(mapFirebaseError(err)); }
+    setError("");
+    try { await signInWithGoogle(); navigate("/dashboard"); } catch (err: any) { setError(mapFirebaseError(err)); }
   };
   const handleApple = async () => {
-    try { setError(""); await signInWithApple(); navigate("/dashboard"); } catch (err: any) { setError(mapFirebaseError(err)); }
+    setError("");
+    try { await signInWithApple(); } catch (err: any) { setError(mapFirebaseError(err)); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,6 +36,8 @@ export default function Login() {
     }
   };
 
+  const displayError = error || redirectMessage;
+
   return (
     <div className="min-h-screen flex items-center justify-center dot-grid relative px-6">
       <div className="w-full max-w-sm animate-fade-up">
@@ -40,7 +48,7 @@ export default function Login() {
           <p className="mt-2 text-sm text-muted-foreground">Welcome back. Log in to your dashboard.</p>
         </div>
 
-        {error && <p className="text-sm text-destructive mb-4 text-center">{error}</p>}
+        {displayError && <p className="text-sm text-destructive mb-4 text-center">{displayError}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

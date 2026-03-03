@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { authService } from "@/services/auth";
 import type { User } from "@/services/types";
 
@@ -22,9 +23,13 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const AUTH_PAGES = ["/login", "/signup", "/reset-password"];
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Handle redirect results from signInWithRedirect (Safari)
   useEffect(() => {
@@ -32,13 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authService.handleRedirectResult().then((redirectUser) => {
       if (!cancelled && redirectUser) {
         setUser(redirectUser);
-        window.location.replace(
-          (import.meta.env.BASE_URL || "/") + "dashboard"
-        );
+        navigate("/dashboard", { replace: true });
       }
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChange((u) => {
@@ -47,6 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     return unsubscribe;
   }, []);
+
+  // Redirect authenticated users away from auth pages
+  useEffect(() => {
+    if (!loading && user) {
+      const path = location.pathname;
+      if (AUTH_PAGES.some((p) => path.includes(p))) {
+        navigate("/dashboard", { replace: true });
+      }
+    }
+  }, [loading, user, location.pathname, navigate]);
 
   const signUp = async (email: string, password: string, fullName: string) => {
     await authService.signUp(email, password, fullName);

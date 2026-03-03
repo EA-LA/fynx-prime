@@ -12,6 +12,7 @@ export interface User {
   createdAt: string;
   emailVerified: boolean;
   kycStatus: KycStatus;
+  provider: "email" | "google" | "apple" | "oauth";
 }
 
 export type KycStatus = "not_started" | "pending" | "verified" | "failed";
