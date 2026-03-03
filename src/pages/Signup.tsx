@@ -23,6 +23,17 @@ export default function Signup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Client-side password validation
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      setError("Password must contain at least 1 special character.");
+      return;
+    }
+
     try {
       await signUp(email, password, name.trim());
       setSignupSuccess(true);
