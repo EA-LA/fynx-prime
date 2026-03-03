@@ -15,7 +15,7 @@ export default function Login() {
     try { setError(""); await signInWithGoogle(); navigate("/dashboard"); } catch (err: any) { setError(err?.message || "Google sign-in failed"); }
   };
   const handleApple = async () => {
-    try { setError(""); await signInWithApple(); } catch (err: any) { setError(err?.message || "Apple sign-in failed"); }
+    try { setError(""); await signInWithApple(); navigate("/dashboard"); } catch (err: any) { setError(err?.message || "Apple sign-in failed"); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

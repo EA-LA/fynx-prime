@@ -160,7 +160,15 @@ class FirebaseAuthService implements AuthService {
     const provider = new OAuthProvider("apple.com");
     provider.addScope("email");
     provider.addScope("name");
-    await signInWithRedirect(this.getAuth(), provider);
+    try {
+      await signInWithRedirect(this.getAuth(), provider);
+    } catch (err: any) {
+      // Surface clear error if Apple provider isn't configured in Firebase
+      if (err?.code === "auth/operation-not-allowed") {
+        throw new Error("Apple Sign-In is not configured yet. Enable it in Firebase Console.");
+      }
+      throw err;
+    }
     return {} as User;
   }
 
@@ -305,6 +313,21 @@ class LocalAuthService implements AuthService {
   async refreshCurrentUser(): Promise<User | null> { return this.currentUser; }
 }
 
+// In production, LocalAuth is NEVER allowed — Firebase must be configured.
+// In dev, LocalAuth is only allowed if VITE_ALLOW_LOCAL_AUTH=true.
+const allowLocalFallback =
+  import.meta.env.DEV && import.meta.env.VITE_ALLOW_LOCAL_AUTH === "true";
+
 export const authService: AuthService = isFirebaseConfigured
   ? new FirebaseAuthService()
-  : new LocalAuthService();
+  : allowLocalFallback
+    ? new LocalAuthService()
+    : (() => {
+        const msg = "Firebase is not configured. Set VITE_FIREBASE_* environment variables.";
+        if (!import.meta.env.DEV) {
+          // Production: throw hard — app cannot function without auth
+          throw new Error(msg);
+        }
+        console.error("[AuthService]", msg, "Using LocalAuthService as fallback (dev only).");
+        return new LocalAuthService();
+      })();

@@ -9,9 +9,21 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || undefined,
 };
 
-export const isFirebaseConfigured = !!firebaseConfig.apiKey;
+export const isFirebaseConfigured =
+  !!firebaseConfig.apiKey &&
+  !!firebaseConfig.authDomain &&
+  !!firebaseConfig.projectId &&
+  !!firebaseConfig.appId;
+
+// Dev-only: log missing keys for debugging
+if (import.meta.env.DEV && !isFirebaseConfigured) {
+  const required = ["VITE_FIREBASE_API_KEY", "VITE_FIREBASE_AUTH_DOMAIN", "VITE_FIREBASE_PROJECT_ID", "VITE_FIREBASE_APP_ID"];
+  const missing = required.filter((k) => !import.meta.env[k]);
+  console.warn("[Firebase] Missing env vars:", missing.join(", "));
+}
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
