@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { mapFirebaseError } from "@/lib/auth-error-map";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -12,10 +13,10 @@ export default function Login() {
   const { signIn, signInWithGoogle, signInWithApple } = useAuth();
 
   const handleGoogle = async () => {
-    try { setError(""); await signInWithGoogle(); navigate("/dashboard"); } catch (err: any) { setError(err?.message || "Google sign-in failed"); }
+    try { setError(""); await signInWithGoogle(); navigate("/dashboard"); } catch (err: any) { setError(mapFirebaseError(err)); }
   };
   const handleApple = async () => {
-    try { setError(""); await signInWithApple(); navigate("/dashboard"); } catch (err: any) { setError(err?.message || "Apple sign-in failed"); }
+    try { setError(""); await signInWithApple(); navigate("/dashboard"); } catch (err: any) { setError(mapFirebaseError(err)); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +26,7 @@ export default function Login() {
       await signIn(email, password);
       navigate("/dashboard");
     } catch (err: any) {
-      setError(err?.message || "Sign in failed");
+      setError(mapFirebaseError(err));
     }
   };
 
