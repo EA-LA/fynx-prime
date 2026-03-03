@@ -16,5 +16,10 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     return <Navigate to="/login" replace />;
   }
 
+  // Block unverified email/password users (OAuth users are typically auto-verified)
+  if (user.provider === "email" && !user.emailVerified) {
+    return <Navigate to="/login" replace state={{ message: "Please verify your email before accessing the dashboard." }} />;
+  }
+
   return <>{children}</>;
 }

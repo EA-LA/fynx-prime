@@ -57,14 +57,36 @@ async function createOrUpdateFirestoreUser(
     await setDoc(userRef, {
       uid,
       email: data.email,
-      displayName: data.displayName,
+      displayName: data.displayName || "Trader",
       provider: data.provider,
+      nickname: "",
+      country: "",
       createdAt: serverTimestamp(),
     });
   }
 }
 
+/** Read Firestore user doc to hydrate fields not in Firebase Auth */
+async function getFirestoreUserData(uid: string): Promise<{ displayName?: string; nickname?: string; country?: string; provider?: string } | null> {
+  if (!firebaseDb) return null;
+  try {
+    const snap = await getDoc(doc(firebaseDb, "users", uid));
+    if (snap.exists()) return snap.data() as any;
+  } catch (e) {
+    console.error("[AuthService] Failed to read Firestore user doc:", e);
+  }
+  return null;
+}
+
 // ── Map Firebase user → app User ─────────────────────────
+
+function getProviderType(fbUser: import("firebase/auth").User): User["provider"] {
+  const providers = fbUser.providerData.map((p) => p.providerId);
+  if (providers.includes("google.com")) return "google";
+  if (providers.includes("apple.com")) return "apple";
+  if (providers.includes("password")) return "email";
+  return "oauth";
+}
 
 function firebaseUserToUser(fbUser: import("firebase/auth").User): User {
   return {
@@ -76,6 +98,7 @@ function firebaseUserToUser(fbUser: import("firebase/auth").User): User {
     createdAt: fbUser.metadata.creationTime || new Date().toISOString(),
     emailVerified: fbUser.emailVerified,
     kycStatus: "not_started",
+    provider: getProviderType(fbUser),
   };
 }
 
@@ -92,6 +115,17 @@ class FirebaseAuthService implements AuthService {
   private getAuth() {
     if (!firebaseAuth) throw new Error("Firebase not configured");
     return firebaseAuth;
+  }
+
+  /** Hydrate user fields from Firestore (fullName, nickname, country) */
+  private async hydrateFromFirestore(user: User): Promise<User> {
+    const fsData = await getFirestoreUserData(user.userId);
+    if (fsData) {
+      if (!user.fullName && fsData.displayName) user.fullName = fsData.displayName;
+      if (fsData.nickname) user.nickname = fsData.nickname;
+      if (fsData.country) user.country = fsData.country;
+    }
+    return user;
   }
 
   async signUp(email: string, password: string, fullName: string): Promise<User> {
@@ -125,12 +159,10 @@ class FirebaseAuthService implements AuthService {
       throw new Error("Please verify your email before logging in. Check your inbox for the verification link.");
     }
 
-    const user = firebaseUserToUser(cred.user);
+    const user = await this.hydrateFromFirestore(firebaseUserToUser(cred.user));
     this.currentUser = user;
 
-    // Record session
     recordLoginSession(user.userId).catch(console.error);
-
     return user;
   }
 
@@ -141,18 +173,16 @@ class FirebaseAuthService implements AuthService {
       return {} as User;
     }
     const cred = await signInWithPopup(this.getAuth(), provider);
-    const user = firebaseUserToUser(cred.user);
+    const user = await this.hydrateFromFirestore(firebaseUserToUser(cred.user));
     this.currentUser = user;
 
     await createOrUpdateFirestoreUser(cred.user.uid, {
       email: cred.user.email || "",
-      displayName: cred.user.displayName || "",
+      displayName: cred.user.displayName || "Trader",
       provider: "google",
     });
 
-    // Record session
     recordLoginSession(user.userId).catch(console.error);
-
     return user;
   }
 
@@ -163,7 +193,6 @@ class FirebaseAuthService implements AuthService {
     try {
       await signInWithRedirect(this.getAuth(), provider);
     } catch (err: any) {
-      // Surface clear error if Apple provider isn't configured in Firebase
       if (err?.code === "auth/operation-not-allowed") {
         throw new Error("Apple Sign-In is not configured yet. Enable it in Firebase Console.");
       }
@@ -176,7 +205,7 @@ class FirebaseAuthService implements AuthService {
     try {
       const result = await getRedirectResult(this.getAuth());
       if (result?.user) {
-        const user = firebaseUserToUser(result.user);
+        const user = await this.hydrateFromFirestore(firebaseUserToUser(result.user));
         this.currentUser = user;
 
         const providerId = result.providerId || "oauth";
@@ -184,13 +213,11 @@ class FirebaseAuthService implements AuthService {
 
         await createOrUpdateFirestoreUser(result.user.uid, {
           email: result.user.email || "",
-          displayName: result.user.displayName || "",
+          displayName: result.user.displayName || "Trader",
           provider: providerName,
         });
 
-        // Record session after redirect login
         recordLoginSession(user.userId).catch(console.error);
-
         return user;
       }
     } catch (err) {
@@ -215,10 +242,15 @@ class FirebaseAuthService implements AuthService {
   }
 
   onAuthStateChange(callback: (user: User | null) => void): () => void {
-    return onAuthStateChanged(this.getAuth(), (fbUser) => {
-      const user = fbUser ? firebaseUserToUser(fbUser) : null;
-      this.currentUser = user;
-      callback(user);
+    return onAuthStateChanged(this.getAuth(), async (fbUser) => {
+      if (fbUser) {
+        const user = await this.hydrateFromFirestore(firebaseUserToUser(fbUser));
+        this.currentUser = user;
+        callback(user);
+      } else {
+        this.currentUser = null;
+        callback(null);
+      }
     });
   }
 
@@ -240,7 +272,7 @@ class FirebaseAuthService implements AuthService {
     const fbUser = this.getAuth().currentUser;
     if (!fbUser) return null;
     await fbUser.reload();
-    const user = firebaseUserToUser(fbUser);
+    const user = await this.hydrateFromFirestore(firebaseUserToUser(fbUser));
     this.currentUser = user;
     return user;
   }
@@ -274,7 +306,7 @@ class LocalAuthService implements AuthService {
   async signUp(email: string, _password: string, fullName: string): Promise<User> {
     const user: User = {
       userId: `usr_${Date.now().toString(36)}`, email, fullName, nickname: "", country: "",
-      createdAt: new Date().toISOString(), emailVerified: false, kycStatus: "not_started",
+      createdAt: new Date().toISOString(), emailVerified: false, kycStatus: "not_started", provider: "email",
     };
     this.persist(user);
     return user;
@@ -285,7 +317,7 @@ class LocalAuthService implements AuthService {
       userId: `usr_${Date.now().toString(36)}`, email,
       fullName: localStorage.getItem("fynx_user_name") || "Trader",
       nickname: "", country: "",
-      createdAt: new Date().toISOString(), emailVerified: false, kycStatus: "not_started",
+      createdAt: new Date().toISOString(), emailVerified: false, kycStatus: "not_started", provider: "email",
     };
     this.persist(user);
     return user;
@@ -325,7 +357,6 @@ export const authService: AuthService = isFirebaseConfigured
     : (() => {
         const msg = "Firebase is not configured. Set VITE_FIREBASE_* environment variables.";
         if (!import.meta.env.DEV) {
-          // Production: throw hard — app cannot function without auth
           throw new Error(msg);
         }
         console.error("[AuthService]", msg, "Using LocalAuthService as fallback (dev only).");
