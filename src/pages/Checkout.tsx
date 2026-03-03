@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CreditCard, Wallet, Apple, Globe2, Lock, Shield } from "lucide-react";
 import { challengeConfigs } from "@/lib/challengeConfig";
@@ -6,6 +6,7 @@ import { paymentProvider } from "@/services/payments";
 import { dataService } from "@/services/database";
 import { useAuth } from "@/contexts/AuthContext";
 import type { PaymentMethodType } from "@/services/types";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
 const cryptoOptions = [
   { id: "btc", label: "Bitcoin (BTC)" },
@@ -31,21 +32,87 @@ export default function Checkout() {
   const config = challengeConfigs[sizeIdx] || challengeConfigs[1];
   const phaseConfig = config.phases[phase];
 
+  const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID as string | undefined;
+
+  // If you later set VITE_API_BASE_URL, we’ll use it. Otherwise defaults to same domain.
+  const apiBase =
+    (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+
+  const paypalOptions = useMemo(() => {
+    // PayPal SDK requires a client-id; if missing we still render a message.
+    return {
+      "client-id": paypalClientId || "",
+      currency,
+      intent: "CAPTURE",
+      components: "buttons",
+    };
+  }, [paypalClientId, currency]);
+
+  const buildOrderData = () => ({
+    userId: user?.userId || "",
+    challengeId: "",
+    amount: phaseConfig.price,
+    currency,
+    paymentMethod: method,
+    createdAt: new Date().toISOString(),
+    challenge: `${config.label} ${phase.replace("-", " ")}`,
+    accountSize: config.accountSize,
+    phase,
+    style,
+  });
+
+  const createPayPalOrder = async () => {
+    const orderData = buildOrderData();
+
+    const res = await fetch(`${apiBase}/api/paypal/create-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // Keep payload simple; backend should create an order with PayPal + return the PayPal order id
+      body: JSON.stringify({
+        amount: phaseConfig.price,
+        currency,
+        orderData,
+      }),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`PayPal create-order failed (${res.status}): ${txt}`);
+    }
+
+    const data = (await res.json().catch(() => ({}))) as any;
+    const orderId = data?.id || data?.orderID || data?.orderId;
+
+    if (!orderId) throw new Error("PayPal create-order did not return an order id.");
+    return orderId as string;
+  };
+
+  const capturePayPalOrder = async (paypalOrderId: string) => {
+    const orderData = buildOrderData();
+
+    const res = await fetch(`${apiBase}/api/paypal/capture-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        paypalOrderId,
+        orderData,
+      }),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`PayPal capture-order failed (${res.status}): ${txt}`);
+    }
+
+    const data = (await res.json().catch(() => ({}))) as any;
+    return data;
+  };
+
   const handlePay = async () => {
     setProcessing(true);
     try {
-      const orderData = {
-        userId: user?.userId || "",
-        challengeId: "",
-        amount: phaseConfig.price,
-        currency,
-        paymentMethod: method,
-        createdAt: new Date().toISOString(),
-        challenge: `${config.label} ${phase.replace("-", " ")}`,
-        accountSize: config.accountSize,
-        phase,
-        style,
-      };
+      const orderData = buildOrderData();
 
       // Create checkout session through payment provider
       const session = await paymentProvider.createCheckoutSession(orderData, method);
@@ -83,7 +150,10 @@ export default function Checkout() {
           <Link to="/" className="text-lg font-bold tracking-tight">
             FYNX<span className="text-muted-foreground font-light ml-1">Funded</span>
           </Link>
-          <Link to="/challenge-builder" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+          <Link
+            to="/challenge-builder"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+          >
             <ArrowLeft size={14} /> Back
           </Link>
         </div>
@@ -127,20 +197,39 @@ export default function Checkout() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-xs text-muted-foreground block mb-1.5">Cardholder Name</label>
-                    <input type="text" placeholder="Name on card" className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30" />
+                    <input
+                      type="text"
+                      placeholder="Name on card"
+                      className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30"
+                    />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground block mb-1.5">Card Number</label>
-                    <input type="text" placeholder="1234 5678 9012 3456" maxLength={19} className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono" />
+                    <input
+                      type="text"
+                      placeholder="1234 5678 9012 3456"
+                      maxLength={19}
+                      className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono"
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-muted-foreground block mb-1.5">Expiry</label>
-                      <input type="text" placeholder="MM/YY" maxLength={5} className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono" />
+                      <input
+                        type="text"
+                        placeholder="MM/YY"
+                        maxLength={5}
+                        className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono"
+                      />
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground block mb-1.5">CVC</label>
-                      <input type="text" placeholder="123" maxLength={4} className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono" />
+                      <input
+                        type="text"
+                        placeholder="123"
+                        maxLength={4}
+                        className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono"
+                      />
                     </div>
                   </div>
                 </div>
@@ -148,10 +237,68 @@ export default function Checkout() {
             )}
 
             {method === "paypal" && (
-              <div className="premium-card animate-fade-in text-center py-8">
-                <Globe2 size={32} className="mx-auto text-muted-foreground mb-3" />
-                <p className="text-sm font-medium mb-1">PayPal</p>
-                <p className="text-xs text-muted-foreground">You will be redirected to PayPal to complete payment.</p>
+              <div className="premium-card animate-fade-in">
+                <div className="text-center py-4">
+                  <Globe2 size={32} className="mx-auto text-muted-foreground mb-3" />
+                  <p className="text-sm font-medium mb-1">PayPal</p>
+                  <p className="text-xs text-muted-foreground mb-5">
+                    Complete payment using PayPal securely.
+                  </p>
+
+                  {!paypalClientId ? (
+                    <p className="text-xs text-muted-foreground">
+                      Missing <span className="font-mono">VITE_PAYPAL_CLIENT_ID</span> in GitHub Actions Variables.
+                    </p>
+                  ) : (
+                    <div className="max-w-sm mx-auto">
+                      <PayPalScriptProvider options={paypalOptions}>
+                        <PayPalButtons
+                          style={{ layout: "vertical" }}
+                          disabled={processing}
+                          forceReRender={[phaseConfig.price, currency]}
+                          createOrder={async () => {
+                            setProcessing(true);
+                            try {
+                              return await createPayPalOrder();
+                            } finally {
+                              setProcessing(false);
+                            }
+                          }}
+                          onApprove={async (data) => {
+                            setProcessing(true);
+                            try {
+                              const paypalOrderId = (data as any)?.orderID as string;
+                              const capture = await capturePayPalOrder(paypalOrderId);
+
+                              // Expect backend to respond with your internal order id
+                              const internalOrderId =
+                                capture?.orderId || capture?.id || capture?.internalOrderId;
+
+                              if (!internalOrderId) {
+                                throw new Error("PayPal capture succeeded but no internal order id returned.");
+                              }
+
+                              localStorage.setItem("fynx_last_order_id", internalOrderId);
+                              navigate("/checkout/success");
+                            } catch (err) {
+                              console.error("[Checkout] PayPal approval failed:", err);
+                              navigate("/checkout/failure");
+                            } finally {
+                              setProcessing(false);
+                            }
+                          }}
+                          onError={(err) => {
+                            console.error("[Checkout] PayPal error:", err);
+                            navigate("/checkout/failure");
+                          }}
+                          onCancel={() => {
+                            // User canceled PayPal flow; do nothing.
+                          }}
+                        />
+                      </PayPalScriptProvider>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -186,23 +333,25 @@ export default function Checkout() {
             )}
 
             {/* Pay button */}
-            <button
-              onClick={handlePay}
-              disabled={processing}
-              className="w-full bg-primary text-primary-foreground py-3 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {processing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Lock size={14} />
-                  Pay ${phaseConfig.price}
-                </>
-              )}
-            </button>
+            {method !== "paypal" && (
+              <button
+                onClick={handlePay}
+                disabled={processing}
+                className="w-full bg-primary text-primary-foreground py-3 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {processing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Lock size={14} />
+                    Pay ${phaseConfig.price}
+                  </>
+                )}
+              </button>
+            )}
 
             <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><Shield size={12} /> Secure Payment</span>
