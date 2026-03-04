@@ -70,8 +70,8 @@ const App = () => (
                 <Route path="/refund-policy" element={<RefundPolicy />} />
                 <Route path="/challenge-builder" element={<ChallengeBuilder />} />
                 <Route path="/aml-kyc" element={<AmlKyc />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/checkout/success" element={<CheckoutSuccess />} />
+                <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+                <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                 <Route path="/checkout/failure" element={<CheckoutFailure />} />
                 <Route path="/order-status" element={<OrderStatus />} />
 

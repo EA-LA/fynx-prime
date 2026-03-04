@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CheckCircle2, Download, ArrowRight, FileText } from "lucide-react";
+import { CheckCircle2, Download, ArrowRight, FileText, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { dataService } from "@/services/database";
 import { downloadReceipt } from "@/services/payments";
@@ -8,13 +8,21 @@ import type { Order } from "@/services/types";
 export default function CheckoutSuccess() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
     const loadOrder = async () => {
       const orderId = localStorage.getItem("fynx_last_order_id");
       if (orderId) {
         const found = await dataService.getOrder(orderId);
-        setOrder(found);
+        if (found && found.status === "paid") {
+          setOrder(found);
+          setVerified(true);
+        } else if (found) {
+          // Order exists but not paid — don't show success
+          setOrder(found);
+          setVerified(false);
+        }
       }
       setLoading(false);
     };
@@ -29,20 +37,20 @@ export default function CheckoutSuccess() {
     );
   }
 
-  if (!order) {
+  if (!order || !verified) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-6">
         <div className="text-center">
-          <p className="text-muted-foreground mb-4">No order found.</p>
+          <AlertTriangle size={32} className="mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Payment not verified</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            We could not confirm your payment. If you believe this is an error, please contact support.
+          </p>
           <Link to="/challenge-builder" className="text-sm text-foreground underline">Go to Challenge Builder</Link>
         </div>
       </div>
     );
   }
-
-  const handleDownloadReceipt = () => {
-    downloadReceipt(order);
-  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
@@ -61,12 +69,12 @@ export default function CheckoutSuccess() {
           <DetailRow label="Amount" value={`$${order.amount}`} />
           <DetailRow label="Payment Method" value={order.paymentMethod} />
           <DetailRow label="Date" value={new Date(order.createdAt).toLocaleDateString()} />
-          <DetailRow label="Status" value={order.status} />
+          <DetailRow label="Status" value={order.status.toUpperCase()} />
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
           <button
-            onClick={handleDownloadReceipt}
+            onClick={() => downloadReceipt(order)}
             className="flex-1 border border-border px-4 py-2.5 rounded-md text-sm font-medium hover:bg-secondary transition-colors inline-flex items-center justify-center gap-2"
           >
             <Download size={14} /> Download Receipt
@@ -83,7 +91,7 @@ export default function CheckoutSuccess() {
           <div className="flex items-start gap-2">
             <FileText size={14} className="text-muted-foreground mt-0.5 shrink-0" />
             <p className="text-xs text-muted-foreground">
-              A confirmation has been sent to your email. Your trading account credentials will be available in your dashboard within minutes.
+              A confirmation has been sent to your email. Your trading account credentials will be available in your dashboard once broker integration is activated.
             </p>
           </div>
         </div>
