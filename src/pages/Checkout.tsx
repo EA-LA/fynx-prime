@@ -42,9 +42,9 @@ export default function Checkout() {
   const paypalOptions = useMemo(() => {
     // PayPal SDK requires a client-id; if missing we still render a message.
     return {
-      "client-id": paypalClientId || "",
+      clientId: paypalClientId || "",
       currency,
-      intent: "CAPTURE",
+      intent: "capture" as const,
       components: "buttons",
     };
   }, [paypalClientId, currency]);
