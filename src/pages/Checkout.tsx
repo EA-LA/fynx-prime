@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CreditCard, Wallet, Apple, Globe2, Lock, Shield } from "lucide-react";
 import { challengeConfigs } from "@/lib/challengeConfig";
-import { paymentProvider } from "@/services/payments";
 import { dataService } from "@/services/database";
 import { useAuth } from "@/contexts/AuthContext";
 import type { PaymentMethodType } from "@/services/types";
@@ -23,7 +22,6 @@ export default function Checkout() {
   const [cryptoCoin, setCryptoCoin] = useState("usdt");
   const { user } = useAuth();
 
-  // Parse challenge params from URL
   const sizeIdx = parseInt(params.get("size") || "1");
   const phase = (params.get("phase") || "2-phase") as "1-phase" | "2-phase" | "3-phase";
   const style = params.get("style") || "normal";
@@ -34,13 +32,11 @@ export default function Checkout() {
 
   const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID as string | undefined;
 
-  // If you later set VITE_API_BASE_URL, we’ll use it. Otherwise defaults to same domain.
   const apiBase =
     (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
     (typeof window !== "undefined" ? window.location.origin : "");
 
   const paypalOptions = useMemo(() => {
-    // PayPal SDK requires a client-id; if missing we still render a message.
     return {
       clientId: paypalClientId || "",
       currency,
@@ -49,30 +45,60 @@ export default function Checkout() {
     };
   }, [paypalClientId, currency]);
 
-  const buildOrderData = () => ({
-    userId: user?.userId || "",
-    challengeId: "",
-    amount: phaseConfig.price,
-    currency,
-    paymentMethod: method,
-    createdAt: new Date().toISOString(),
-    challenge: `${config.label} ${phase.replace("-", " ")}`,
-    accountSize: config.accountSize,
-    phase,
-    style,
-  });
+  /** Create order + challenge in Firestore after confirmed payment */
+  const finalizeOrder = async (paymentMethod: PaymentMethodType, externalRef?: string) => {
+    if (!user) throw new Error("Not authenticated");
+
+    // 1. Create order in Firestore with status "paid"
+    const order = await dataService.createOrder({
+      userId: user.userId,
+      challengeId: "",
+      amount: phaseConfig.price,
+      currency,
+      paymentMethod,
+      status: "paid",
+      createdAt: new Date().toISOString(),
+      paidAt: new Date().toISOString(),
+      challenge: `${config.label} ${phase.replace("-", " ")}`,
+      accountSize: config.accountSize,
+      phase,
+      style,
+    });
+
+    // 2. Create challenge record linked to order
+    const challenge = await dataService.createChallenge({
+      userId: user.userId,
+      orderId: order.orderId,
+      name: `${config.label} ${phase.replace("-", " ")}`,
+      phase,
+      accountSize: config.accountSize,
+      style,
+      status: "active",
+      startDate: new Date().toISOString(),
+      brokerAccountId: null,
+      currency,
+    });
+
+    // 3. Update order with challengeId
+    await dataService.updateOrderStatus(order.orderId, "paid");
+
+    return order;
+  };
 
   const createPayPalOrder = async () => {
-    const orderData = buildOrderData();
-
     const res = await fetch(`${apiBase}/api/paypal/create-order`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // Keep payload simple; backend should create an order with PayPal + return the PayPal order id
       body: JSON.stringify({
         amount: phaseConfig.price,
         currency,
-        orderData,
+        orderData: {
+          userId: user?.userId || "",
+          challenge: `${config.label} ${phase.replace("-", " ")}`,
+          accountSize: config.accountSize,
+          phase,
+          style,
+        },
       }),
     });
 
@@ -83,21 +109,15 @@ export default function Checkout() {
 
     const data = (await res.json().catch(() => ({}))) as any;
     const orderId = data?.id || data?.orderID || data?.orderId;
-
     if (!orderId) throw new Error("PayPal create-order did not return an order id.");
     return orderId as string;
   };
 
   const capturePayPalOrder = async (paypalOrderId: string) => {
-    const orderData = buildOrderData();
-
     const res = await fetch(`${apiBase}/api/paypal/capture-order`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paypalOrderId,
-        orderData,
-      }),
+      body: JSON.stringify({ paypalOrderId }),
     });
 
     if (!res.ok) {
@@ -105,32 +125,21 @@ export default function Checkout() {
       throw new Error(`PayPal capture-order failed (${res.status}): ${txt}`);
     }
 
-    const data = (await res.json().catch(() => ({}))) as any;
-    return data;
+    return (await res.json().catch(() => ({}))) as any;
   };
 
   const handlePay = async () => {
+    if (!user) return;
     setProcessing(true);
     try {
-      const orderData = buildOrderData();
-
-      // Create checkout session through payment provider
-      const session = await paymentProvider.createCheckoutSession(orderData, method);
-
-      // Confirm payment (placeholder simulates success)
-      const result = await paymentProvider.confirmPayment(session.sessionId);
-
-      if (result.status === "paid") {
-        // Store orderId for success page to load via dataService
-        localStorage.setItem("fynx_last_order_id", result.orderId);
-        navigate("/checkout/success");
-      } else {
-        await dataService.updateOrderStatus(result.orderId, "failed");
-        navigate("/checkout/failure");
+      // For card/apple/crypto — these will need real payment gateway integration.
+      // For now show an error since no real gateway is connected yet.
+      if (method === "card" || method === "apple" || method === "crypto") {
+        throw new Error(`${method === "card" ? "Card" : method === "apple" ? "Apple Pay" : "Crypto"} payment gateway is not connected yet. Please use PayPal.`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Checkout] Payment failed:", err);
-      navigate("/checkout/failure");
+      alert(err?.message || "Payment failed. Please try again.");
     } finally {
       setProcessing(false);
     }
@@ -197,42 +206,24 @@ export default function Checkout() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-xs text-muted-foreground block mb-1.5">Cardholder Name</label>
-                    <input
-                      type="text"
-                      placeholder="Name on card"
-                      className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30"
-                    />
+                    <input type="text" placeholder="Name on card" className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30" />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground block mb-1.5">Card Number</label>
-                    <input
-                      type="text"
-                      placeholder="1234 5678 9012 3456"
-                      maxLength={19}
-                      className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono"
-                    />
+                    <input type="text" placeholder="1234 5678 9012 3456" maxLength={19} className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-muted-foreground block mb-1.5">Expiry</label>
-                      <input
-                        type="text"
-                        placeholder="MM/YY"
-                        maxLength={5}
-                        className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono"
-                      />
+                      <input type="text" placeholder="MM/YY" maxLength={5} className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono" />
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground block mb-1.5">CVC</label>
-                      <input
-                        type="text"
-                        placeholder="123"
-                        maxLength={4}
-                        className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono"
-                      />
+                      <input type="text" placeholder="123" maxLength={4} className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono" />
                     </div>
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground mt-4">Card payment gateway is not connected yet. Please use PayPal.</p>
               </div>
             )}
 
@@ -241,14 +232,10 @@ export default function Checkout() {
                 <div className="text-center py-4">
                   <Globe2 size={32} className="mx-auto text-muted-foreground mb-3" />
                   <p className="text-sm font-medium mb-1">PayPal</p>
-                  <p className="text-xs text-muted-foreground mb-5">
-                    Complete payment using PayPal securely.
-                  </p>
+                  <p className="text-xs text-muted-foreground mb-5">Complete payment using PayPal securely.</p>
 
                   {!paypalClientId ? (
-                    <p className="text-xs text-muted-foreground">
-                      Missing <span className="font-mono">VITE_PAYPAL_CLIENT_ID</span> in GitHub Actions Variables.
-                    </p>
+                    <p className="text-xs text-muted-foreground">PayPal is not configured. Please contact support.</p>
                   ) : (
                     <div className="max-w-sm mx-auto">
                       <PayPalScriptProvider options={paypalOptions}>
@@ -268,17 +255,12 @@ export default function Checkout() {
                             setProcessing(true);
                             try {
                               const paypalOrderId = (data as any)?.orderID as string;
-                              const capture = await capturePayPalOrder(paypalOrderId);
+                              await capturePayPalOrder(paypalOrderId);
 
-                              // Expect backend to respond with your internal order id
-                              const internalOrderId =
-                                capture?.orderId || capture?.id || capture?.internalOrderId;
+                              // Payment captured — finalize in Firestore
+                              const order = await finalizeOrder("paypal", paypalOrderId);
 
-                              if (!internalOrderId) {
-                                throw new Error("PayPal capture succeeded but no internal order id returned.");
-                              }
-
-                              localStorage.setItem("fynx_last_order_id", internalOrderId);
+                              localStorage.setItem("fynx_last_order_id", order.orderId);
                               navigate("/checkout/success");
                             } catch (err) {
                               console.error("[Checkout] PayPal approval failed:", err);
@@ -291,9 +273,7 @@ export default function Checkout() {
                             console.error("[Checkout] PayPal error:", err);
                             navigate("/checkout/failure");
                           }}
-                          onCancel={() => {
-                            // User canceled PayPal flow; do nothing.
-                          }}
+                          onCancel={() => {}}
                         />
                       </PayPalScriptProvider>
                     </div>
@@ -306,7 +286,7 @@ export default function Checkout() {
               <div className="premium-card animate-fade-in text-center py-8">
                 <Apple size={32} className="mx-auto text-muted-foreground mb-3" />
                 <p className="text-sm font-medium mb-1">Apple Pay</p>
-                <p className="text-xs text-muted-foreground">Confirm payment using Apple Pay on your device.</p>
+                <p className="text-xs text-muted-foreground">Apple Pay gateway is not connected yet. Please use PayPal.</p>
               </div>
             )}
 
@@ -328,11 +308,11 @@ export default function Checkout() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-4">A wallet address will be generated after confirmation.</p>
+                <p className="text-xs text-muted-foreground mt-4">Crypto payment gateway is not connected yet. Please use PayPal.</p>
               </div>
             )}
 
-            {/* Pay button */}
+            {/* Pay button — only for non-PayPal methods (informational) */}
             {method !== "paypal" && (
               <button
                 onClick={handlePay}

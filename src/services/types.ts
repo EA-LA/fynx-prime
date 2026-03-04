@@ -49,6 +49,8 @@ export interface Challenge {
   status: ChallengeStatus;
   startDate: string;
   endDate?: string;
+  brokerAccountId?: string | null;
+  currency?: string;
 }
 
 export type ChallengeStatus = "active" | "passed" | "failed" | "funded" | "expired";
