@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CreditCard, Wallet, Apple, Globe2, Lock, Shield } from "lucide-react";
 import { challengeConfigs } from "@/lib/challengeConfig";
-import { dataService } from "@/services/database";
 import { useAuth } from "@/contexts/AuthContext";
 import type { PaymentMethodType } from "@/services/types";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
@@ -13,6 +12,24 @@ const cryptoOptions = [
   { id: "usdt", label: "Tether (USDT)" },
   { id: "usdc", label: "USD Coin (USDC)" },
 ];
+
+/** Map account size number → price map key prefix */
+function accountSizeToKey(size: number): string {
+  if (size >= 200000) return "200k";
+  if (size >= 100000) return "100k";
+  if (size >= 50000) return "50k";
+  if (size >= 25000) return "25k";
+  if (size >= 10000) return "10k";
+  return "5k";
+}
+
+/** Map phase string → phase number for price map */
+function phaseToNumber(phase: string): string {
+  if (phase === "1-phase") return "1";
+  if (phase === "2-phase") return "2";
+  if (phase === "3-phase") return "3";
+  return "2";
+}
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -45,11 +62,12 @@ export default function Checkout() {
     };
   }, [paypalClientId, currency]);
 
-  /** Create order + challenge in Firestore after confirmed payment */
+  /** Finalize order in Firestore after PayPal payment */
   const finalizeOrder = async (paymentMethod: PaymentMethodType, externalRef?: string) => {
     if (!user) throw new Error("Not authenticated");
 
-    // 1. Create order in Firestore with status "paid"
+    const { dataService } = await import("@/services/database");
+
     const order = await dataService.createOrder({
       userId: user.userId,
       challengeId: "",
@@ -65,8 +83,7 @@ export default function Checkout() {
       style,
     });
 
-    // 2. Create challenge record linked to order
-    const challenge = await dataService.createChallenge({
+    await dataService.createChallenge({
       userId: user.userId,
       orderId: order.orderId,
       name: `${config.label} ${phase.replace("-", " ")}`,
@@ -79,12 +96,10 @@ export default function Checkout() {
       currency,
     });
 
-    // 3. Update order with challengeId
-    await dataService.updateOrderStatus(order.orderId, "paid");
-
     return order;
   };
 
+  /** PayPal: create order on backend */
   const createPayPalOrder = async () => {
     const res = await fetch(`${apiBase}/api/paypal/create-order`, {
       method: "POST",
@@ -113,6 +128,7 @@ export default function Checkout() {
     return orderId as string;
   };
 
+  /** PayPal: capture order on backend */
   const capturePayPalOrder = async (paypalOrderId: string) => {
     const res = await fetch(`${apiBase}/api/paypal/capture-order`, {
       method: "POST",
@@ -128,21 +144,57 @@ export default function Checkout() {
     return (await res.json().catch(() => ({}))) as any;
   };
 
-  const handlePay = async () => {
+  /** Stripe: create checkout session and redirect */
+  const handleStripeCheckout = async () => {
     if (!user) return;
     setProcessing(true);
     try {
-      // For card/apple/crypto — these will need real payment gateway integration.
-      // For now show an error since no real gateway is connected yet.
-      if (method === "card" || method === "apple" || method === "crypto") {
-        throw new Error(`${method === "card" ? "Card" : method === "apple" ? "Apple Pay" : "Crypto"} payment gateway is not connected yet. Please use PayPal.`);
+      const sizeKey = accountSizeToKey(config.accountSize);
+      const phaseNum = phaseToNumber(phase);
+
+      const res = await fetch(`${apiBase}/api/stripe/create-checkout-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountSize: sizeKey,
+          phase: phaseNum,
+          email: user.email,
+          style,
+          currency,
+        }),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Stripe checkout failed (${res.status}): ${txt}`);
+      }
+
+      const data = await res.json();
+      if (data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned from Stripe.");
       }
     } catch (err: any) {
-      console.error("[Checkout] Payment failed:", err);
+      console.error("[Checkout] Stripe error:", err);
       alert(err?.message || "Payment failed. Please try again.");
     } finally {
       setProcessing(false);
     }
+  };
+
+  /** Handle pay button click for non-PayPal methods */
+  const handlePay = async () => {
+    if (!user) return;
+
+    if (method === "card") {
+      await handleStripeCheckout();
+      return;
+    }
+
+    // Apple Pay and Crypto are not connected yet
+    alert(`${method === "apple" ? "Apple Pay" : "Crypto"} payment gateway is not connected yet. Please use Card or PayPal.`);
   };
 
   const methods: { id: PaymentMethodType; label: string; icon: React.ReactNode }[] = [
@@ -199,31 +251,14 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* Card form */}
+            {/* Card — Stripe redirect */}
             {method === "card" && (
               <div className="premium-card animate-fade-in">
-                <h3 className="text-sm font-semibold mb-4">Card Details</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs text-muted-foreground block mb-1.5">Cardholder Name</label>
-                    <input type="text" placeholder="Name on card" className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground block mb-1.5">Card Number</label>
-                    <input type="text" placeholder="1234 5678 9012 3456" maxLength={19} className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1.5">Expiry</label>
-                      <input type="text" placeholder="MM/YY" maxLength={5} className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1.5">CVC</label>
-                      <input type="text" placeholder="123" maxLength={4} className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-foreground/30 font-mono" />
-                    </div>
-                  </div>
+                <div className="text-center py-4">
+                  <CreditCard size={32} className="mx-auto text-muted-foreground mb-3" />
+                  <p className="text-sm font-medium mb-1">Credit / Debit Card</p>
+                  <p className="text-xs text-muted-foreground">You'll be redirected to Stripe's secure checkout to complete payment.</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-4">Card payment gateway is not connected yet. Please use PayPal.</p>
               </div>
             )}
 
@@ -256,10 +291,7 @@ export default function Checkout() {
                             try {
                               const paypalOrderId = (data as any)?.orderID as string;
                               await capturePayPalOrder(paypalOrderId);
-
-                              // Payment captured — finalize in Firestore
                               const order = await finalizeOrder("paypal", paypalOrderId);
-
                               localStorage.setItem("fynx_last_order_id", order.orderId);
                               navigate("/checkout/success");
                             } catch (err) {
@@ -286,7 +318,7 @@ export default function Checkout() {
               <div className="premium-card animate-fade-in text-center py-8">
                 <Apple size={32} className="mx-auto text-muted-foreground mb-3" />
                 <p className="text-sm font-medium mb-1">Apple Pay</p>
-                <p className="text-xs text-muted-foreground">Apple Pay gateway is not connected yet. Please use PayPal.</p>
+                <p className="text-xs text-muted-foreground">Apple Pay gateway is not connected yet. Please use Card or PayPal.</p>
               </div>
             )}
 
@@ -308,11 +340,11 @@ export default function Checkout() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-4">Crypto payment gateway is not connected yet. Please use PayPal.</p>
+                <p className="text-xs text-muted-foreground mt-4">Crypto payment gateway is not connected yet. Please use Card or PayPal.</p>
               </div>
             )}
 
-            {/* Pay button — only for non-PayPal methods (informational) */}
+            {/* Pay button — for non-PayPal methods */}
             {method !== "paypal" && (
               <button
                 onClick={handlePay}

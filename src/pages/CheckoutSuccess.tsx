@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Download, ArrowRight, FileText, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { dataService } from "@/services/database";
@@ -6,28 +6,61 @@ import { downloadReceipt } from "@/services/payments";
 import type { Order } from "@/services/types";
 
 export default function CheckoutSuccess() {
+  const [params] = useSearchParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [verified, setVerified] = useState(false);
 
   useEffect(() => {
-    const loadOrder = async () => {
-      const orderId = localStorage.getItem("fynx_last_order_id");
-      if (orderId) {
-        const found = await dataService.getOrder(orderId);
-        if (found && found.status === "paid") {
-          setOrder(found);
-          setVerified(true);
-        } else if (found) {
-          // Order exists but not paid — don't show success
-          setOrder(found);
-          setVerified(false);
+    const verifyPayment = async () => {
+      const sessionId = params.get("session_id");
+      const localOrderId = localStorage.getItem("fynx_last_order_id");
+
+      // Path 1: Stripe session_id in URL — verify via backend
+      if (sessionId) {
+        try {
+          const apiBase =
+            (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
+            (typeof window !== "undefined" ? window.location.origin : "");
+
+          const res = await fetch(`${apiBase}/api/stripe/verify-session`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.verified && data.status === "paid") {
+              setVerified(true);
+              if (data.order) {
+                setOrder(data.order as Order);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("[CheckoutSuccess] Stripe verification failed:", err);
         }
       }
+
+      // Path 2: PayPal / fallback — verify from Firestore via localStorage order ID
+      if (!verified && localOrderId) {
+        try {
+          const found = await dataService.getOrder(localOrderId);
+          if (found && found.status === "paid") {
+            setOrder(found);
+            setVerified(true);
+          }
+        } catch (err) {
+          console.error("[CheckoutSuccess] Firestore order lookup failed:", err);
+        }
+      }
+
       setLoading(false);
     };
-    loadOrder();
-  }, []);
+
+    verifyPayment();
+  }, [params]);
 
   if (loading) {
     return (
@@ -37,7 +70,7 @@ export default function CheckoutSuccess() {
     );
   }
 
-  if (!order || !verified) {
+  if (!verified) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-6">
         <div className="text-center">
@@ -63,22 +96,26 @@ export default function CheckoutSuccess() {
           <p className="text-sm text-muted-foreground mt-2">Your challenge has been created successfully.</p>
         </div>
 
-        <div className="premium-card space-y-3 text-sm mb-6">
-          <DetailRow label="Order ID" value={order.orderId} mono />
-          <DetailRow label="Challenge" value={order.challenge} />
-          <DetailRow label="Amount" value={`$${order.amount}`} />
-          <DetailRow label="Payment Method" value={order.paymentMethod} />
-          <DetailRow label="Date" value={new Date(order.createdAt).toLocaleDateString()} />
-          <DetailRow label="Status" value={order.status.toUpperCase()} />
-        </div>
+        {order && (
+          <div className="premium-card space-y-3 text-sm mb-6">
+            <DetailRow label="Order ID" value={order.orderId} mono />
+            <DetailRow label="Challenge" value={order.challenge} />
+            <DetailRow label="Amount" value={`$${order.amount}`} />
+            <DetailRow label="Payment Method" value={order.paymentMethod} />
+            <DetailRow label="Date" value={new Date(order.createdAt).toLocaleDateString()} />
+            <DetailRow label="Status" value={order.status.toUpperCase()} />
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => downloadReceipt(order)}
-            className="flex-1 border border-border px-4 py-2.5 rounded-md text-sm font-medium hover:bg-secondary transition-colors inline-flex items-center justify-center gap-2"
-          >
-            <Download size={14} /> Download Receipt
-          </button>
+          {order && (
+            <button
+              onClick={() => downloadReceipt(order)}
+              className="flex-1 border border-border px-4 py-2.5 rounded-md text-sm font-medium hover:bg-secondary transition-colors inline-flex items-center justify-center gap-2"
+            >
+              <Download size={14} /> Download Receipt
+            </button>
+          )}
           <Link
             to="/dashboard"
             className="flex-1 bg-primary text-primary-foreground px-4 py-2.5 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors inline-flex items-center justify-center gap-2"
