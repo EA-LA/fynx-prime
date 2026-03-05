@@ -50,7 +50,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter basename="/fynx-prime">
+          <BrowserRouter>
             <AuthProvider>
               <Routes>
                 {/* Public routes */}

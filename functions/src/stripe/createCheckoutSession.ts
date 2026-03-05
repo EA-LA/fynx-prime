@@ -45,8 +45,8 @@ export const createCheckoutSession = functions.https.onRequest(async (req, res) 
         currency: currency || "USD",
         email,
       },
-      success_url: "https://elhamamini.cc/fynx-prime/checkout/success?session_id={CHECKOUT_SESSION_ID}",
-      cancel_url: "https://elhamamini.cc/fynx-prime/checkout",
+      success_url: "https://fynxfunded.com/checkout/success?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "https://fynxfunded.com/checkout",
     });
 
     res.json({ url: session.url, sessionId: session.id });
