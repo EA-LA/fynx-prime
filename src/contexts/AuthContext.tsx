@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     const u = await authService.signIn(email, password);
     setUser(u);
-    // Navigation is handled by the redirect useEffect below
+    setTimeout(() => navigate("/dashboard", { replace: true }), 0);
   };
 
   const signInWithGoogle = async () => {
@@ -79,16 +79,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Popup flow returns a real user; redirect flow returns empty stub
     if (u?.userId) {
       setUser(u);
+      // Navigate directly — the useEffect redirect is unreliable due to
+      // React batching and onAuthStateChanged race conditions
+      setTimeout(() => navigate("/dashboard", { replace: true }), 0);
     }
-    // Navigation is handled by the redirect useEffect
   };
 
   const signInWithApple = async () => {
     const u = await authService.signInWithApple();
     if (u?.userId) {
       setUser(u);
+      setTimeout(() => navigate("/dashboard", { replace: true }), 0);
     }
-    // Navigation is handled by the redirect useEffect
   };
 
   const signOut = async () => {
