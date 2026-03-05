@@ -5,3 +5,5 @@ admin.initializeApp();
 export { createCheckoutSession } from "./stripe/createCheckoutSession";
 export { stripeWebhook } from "./stripe/webhook";
 export { verifySession } from "./stripe/verifySession";
+export { createPayPalOrder } from "./paypal/createOrder";
+export { capturePayPalOrder } from "./paypal/captureOrder";
