@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CreditCard, Wallet, Apple, Globe2, Lock, Shield } from "lucide-react";
 import { challengeConfigs } from "@/lib/challengeConfig";
@@ -31,6 +31,21 @@ function phaseToNumber(phase: string): string {
   return "2";
 }
 
+/**
+ * Build the full URL for a Firebase Cloud Function.
+ * VITE_API_BASE_URL should be the base, e.g.:
+ *   https://us-central1-<project-id>.cloudfunctions.net
+ * Function names are the exported function names from functions/src/index.ts.
+ */
+function cfUrl(functionName: string): string {
+  const base = (import.meta.env.VITE_API_BASE_URL as string | "").replace(/\/$/, "");
+  if (!base) {
+    console.error("[Checkout] VITE_API_BASE_URL is not set. Firebase Cloud Functions will not work.");
+    return `/${functionName}`;
+  }
+  return `${base}/${functionName}`;
+}
+
 export default function Checkout() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -49,10 +64,6 @@ export default function Checkout() {
 
   const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID as string | undefined;
 
-  const apiBase =
-    (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
-    (typeof window !== "undefined" ? window.location.origin : "");
-
   const paypalOptions = useMemo(() => {
     return {
       clientId: paypalClientId || "",
@@ -62,46 +73,36 @@ export default function Checkout() {
     };
   }, [paypalClientId, currency]);
 
-  /** Finalize order in Firestore after PayPal payment */
-  const finalizeOrder = async (paymentMethod: PaymentMethodType, externalRef?: string) => {
-    if (!user) throw new Error("Not authenticated");
+  // ── Persist pending order to Firestore when checkout loads ──
+  useEffect(() => {
+    if (!user) return;
+    const savePendingOrder = async () => {
+      try {
+        const { dataService } = await import("@/services/database");
+        const pending = await dataService.createOrder({
+          userId: user.userId,
+          challengeId: "",
+          amount: phaseConfig.price,
+          currency,
+          paymentMethod: "card",
+          status: "pending",
+          createdAt: new Date().toISOString(),
+          challenge: `${config.label} ${phase.replace("-", " ")}`,
+          accountSize: config.accountSize,
+          phase,
+          style,
+        });
+        localStorage.setItem("fynx_pending_order_id", pending.orderId);
+      } catch (err) {
+        console.error("[Checkout] Failed to save pending order:", err);
+      }
+    };
+    savePendingOrder();
+  }, [user?.userId, config.label, config.accountSize, phase, style, currency, phaseConfig.price]);
 
-    const { dataService } = await import("@/services/database");
-
-    const order = await dataService.createOrder({
-      userId: user.userId,
-      challengeId: "",
-      amount: phaseConfig.price,
-      currency,
-      paymentMethod,
-      status: "paid",
-      createdAt: new Date().toISOString(),
-      paidAt: new Date().toISOString(),
-      challenge: `${config.label} ${phase.replace("-", " ")}`,
-      accountSize: config.accountSize,
-      phase,
-      style,
-    });
-
-    await dataService.createChallenge({
-      userId: user.userId,
-      orderId: order.orderId,
-      name: `${config.label} ${phase.replace("-", " ")}`,
-      phase,
-      accountSize: config.accountSize,
-      style,
-      status: "active",
-      startDate: new Date().toISOString(),
-      brokerAccountId: null,
-      currency,
-    });
-
-    return order;
-  };
-
-  /** PayPal: create order on backend */
+  /** PayPal: create order on backend (Firebase Cloud Function) */
   const createPayPalOrder = async () => {
-    const res = await fetch(`${apiBase}/api/paypal/create-order`, {
+    const res = await fetch(cfUrl("createPayPalOrder"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -128,9 +129,9 @@ export default function Checkout() {
     return orderId as string;
   };
 
-  /** PayPal: capture order on backend */
+  /** PayPal: capture order on backend (Firebase Cloud Function) */
   const capturePayPalOrder = async (paypalOrderId: string) => {
-    const res = await fetch(`${apiBase}/api/paypal/capture-order`, {
+    const res = await fetch(cfUrl("capturePayPalOrder"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ paypalOrderId }),
@@ -144,7 +145,7 @@ export default function Checkout() {
     return (await res.json().catch(() => ({}))) as any;
   };
 
-  /** Stripe: create checkout session and redirect */
+  /** Stripe: create checkout session via Firebase Cloud Function and redirect */
   const handleStripeCheckout = async () => {
     if (!user) return;
     setProcessing(true);
@@ -152,7 +153,7 @@ export default function Checkout() {
       const sizeKey = accountSizeToKey(config.accountSize);
       const phaseNum = phaseToNumber(phase);
 
-      const res = await fetch(`${apiBase}/api/stripe/create-checkout-session`, {
+      const res = await fetch(cfUrl("createCheckoutSession"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -171,7 +172,6 @@ export default function Checkout() {
 
       const data = await res.json();
       if (data.url) {
-        // Redirect to Stripe Checkout
         window.location.href = data.url;
       } else {
         throw new Error("No checkout URL returned from Stripe.");
@@ -197,11 +197,11 @@ export default function Checkout() {
     alert(`${method === "apple" ? "Apple Pay" : "Crypto"} payment gateway is not connected yet. Please use Card or PayPal.`);
   };
 
-  const methods: { id: PaymentMethodType; label: string; icon: React.ReactNode }[] = [
+  const methods: { id: PaymentMethodType; label: string; icon: React.ReactNode; disabled?: boolean }[] = [
     { id: "card", label: "Credit / Debit Card", icon: <CreditCard size={18} /> },
     { id: "paypal", label: "PayPal", icon: <Globe2 size={18} /> },
-    { id: "apple", label: "Apple Pay", icon: <Apple size={18} /> },
-    { id: "crypto", label: "Cryptocurrency", icon: <Wallet size={18} /> },
+    { id: "apple", label: "Apple Pay", icon: <Apple size={18} />, disabled: true },
+    { id: "crypto", label: "Cryptocurrency", icon: <Wallet size={18} />, disabled: true },
   ];
 
   return (
@@ -237,15 +237,19 @@ export default function Checkout() {
                 {methods.map((m) => (
                   <button
                     key={m.id}
-                    onClick={() => setMethod(m.id)}
+                    onClick={() => !m.disabled && setMethod(m.id)}
+                    disabled={m.disabled}
                     className={`flex items-center gap-3 px-4 py-3 rounded-md border text-sm font-medium transition-all ${
-                      method === m.id
-                        ? "border-foreground/40 bg-secondary/50 text-foreground"
-                        : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                      m.disabled
+                        ? "border-border text-muted-foreground/40 cursor-not-allowed opacity-50"
+                        : method === m.id
+                          ? "border-foreground/40 bg-secondary/50 text-foreground"
+                          : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/30"
                     }`}
                   >
                     {m.icon}
                     {m.label}
+                    {m.disabled && <span className="text-[10px] ml-auto">Soon</span>}
                   </button>
                 ))}
               </div>
@@ -290,9 +294,11 @@ export default function Checkout() {
                             setProcessing(true);
                             try {
                               const paypalOrderId = (data as any)?.orderID as string;
-                              await capturePayPalOrder(paypalOrderId);
-                              const order = await finalizeOrder("paypal", paypalOrderId);
-                              localStorage.setItem("fynx_last_order_id", order.orderId);
+                              const result = await capturePayPalOrder(paypalOrderId);
+                              // Server creates order+challenge in Firestore
+                              if (result.orderId) {
+                                localStorage.setItem("fynx_last_order_id", result.orderId);
+                              }
                               navigate("/checkout/success");
                             } catch (err) {
                               console.error("[Checkout] PayPal approval failed:", err);
@@ -318,7 +324,7 @@ export default function Checkout() {
               <div className="premium-card animate-fade-in text-center py-8">
                 <Apple size={32} className="mx-auto text-muted-foreground mb-3" />
                 <p className="text-sm font-medium mb-1">Apple Pay</p>
-                <p className="text-xs text-muted-foreground">Apple Pay gateway is not connected yet. Please use Card or PayPal.</p>
+                <p className="text-xs text-muted-foreground">Coming soon. Please use Card or PayPal.</p>
               </div>
             )}
 
@@ -340,12 +346,12 @@ export default function Checkout() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-4">Crypto payment gateway is not connected yet. Please use Card or PayPal.</p>
+                <p className="text-xs text-muted-foreground mt-4">Coming soon. Please use Card or PayPal.</p>
               </div>
             )}
 
             {/* Pay button — for non-PayPal methods */}
-            {method !== "paypal" && (
+            {method !== "paypal" && method !== "apple" && method !== "crypto" && (
               <button
                 onClick={handlePay}
                 disabled={processing}

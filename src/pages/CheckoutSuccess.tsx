@@ -19,11 +19,10 @@ export default function CheckoutSuccess() {
       // Path 1: Stripe session_id in URL — verify via backend
       if (sessionId) {
         try {
-          const apiBase =
-            (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
-            (typeof window !== "undefined" ? window.location.origin : "");
+          const base = (import.meta.env.VITE_API_BASE_URL as string | "").replace(/\/$/, "");
+          const verifyUrl = base ? `${base}/verifySession` : "/verifySession";
 
-          const res = await fetch(`${apiBase}/api/stripe/verify-session`, {
+          const res = await fetch(verifyUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ sessionId }),

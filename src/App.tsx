@@ -28,6 +28,7 @@ import Objectives from "./pages/dashboard/Objectives";
 import Trades from "./pages/dashboard/Trades";
 import Analytics from "./pages/dashboard/Analytics";
 import DashboardPayouts from "./pages/dashboard/DashboardPayouts";
+import Billing from "./pages/dashboard/Billing";
 import Certificates from "./pages/dashboard/Certificates";
 import Learning from "./pages/dashboard/Learning";
 import DashboardSettings from "./pages/dashboard/DashboardSettings";
@@ -84,6 +85,7 @@ const App = () => (
                   <Route path="trades" element={<Trades />} />
                   <Route path="analytics" element={<Analytics />} />
                   <Route path="payouts" element={<DashboardPayouts />} />
+                  <Route path="billing" element={<Billing />} />
                   <Route path="certificates" element={<Certificates />} />
                   <Route path="learning" element={<Learning />} />
                   <Route path="settings" element={<DashboardSettings />} />

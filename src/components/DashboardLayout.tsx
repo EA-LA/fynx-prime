@@ -2,6 +2,7 @@ import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Wallet,
+  Receipt,
   Target,
   BarChart3,
   LineChart,
@@ -25,6 +26,7 @@ const sidebarLinks = [
   { label: "Trades", to: "/dashboard/trades", icon: BarChart3 },
   { label: "Analytics", to: "/dashboard/analytics", icon: LineChart },
   { label: "Payouts", to: "/dashboard/payouts", icon: CreditCard },
+  { label: "Billing", to: "/dashboard/billing", icon: Receipt },
   { label: "Certificates", to: "/dashboard/certificates", icon: Award },
   { label: "Learning", to: "/dashboard/learning", icon: BookOpen },
   { label: "Settings", to: "/dashboard/settings", icon: Settings },
