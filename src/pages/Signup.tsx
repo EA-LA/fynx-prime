@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { mapFirebaseError } from "@/lib/auth-error-map";
@@ -11,11 +11,11 @@ export default function Signup() {
   const [showPw, setShowPw] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
+  
   const { signUp, signInWithGoogle, signInWithApple } = useAuth();
 
   const handleGoogle = async () => {
-    try { setError(""); await signInWithGoogle(); navigate("/dashboard"); } catch (err: any) { setError(mapFirebaseError(err)); }
+    try { setError(""); await signInWithGoogle(); } catch (err: any) { setError(mapFirebaseError(err)); }
   };
   const handleApple = async () => {
     try { setError(""); await signInWithApple(); } catch (err: any) { setError(mapFirebaseError(err)); }
