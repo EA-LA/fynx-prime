@@ -233,7 +233,7 @@ class FirebaseAuthService implements AuthService {
 
   async resetPassword(email: string): Promise<void> {
     await sendPasswordResetEmail(this.getAuth(), email, {
-      url: window.location.origin + (import.meta.env.BASE_URL || "/") + "reset-password",
+      url: `${window.location.origin}/reset-password`,
     });
   }
 
