@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { mapFirebaseError } from "@/lib/auth-error-map";
@@ -9,7 +9,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signInWithGoogle, signInWithApple } = useAuth();
 
@@ -18,7 +17,11 @@ export default function Login() {
 
   const handleGoogle = async () => {
     setError("");
-    try { await signInWithGoogle(); navigate("/dashboard"); } catch (err: any) { setError(mapFirebaseError(err)); }
+    try {
+      await signInWithGoogle();
+      // Popup flow: user state is set in AuthContext, redirect effect handles navigation
+      // Redirect flow (Safari): page reloads, handleRedirectResult catches it
+    } catch (err: any) { setError(mapFirebaseError(err)); }
   };
   const handleApple = async () => {
     setError("");
@@ -30,7 +33,7 @@ export default function Login() {
     setError("");
     try {
       await signIn(email, password);
-      navigate("/dashboard");
+      // User state is set directly in AuthContext, redirect effect handles navigation
     } catch (err: any) {
       setError(mapFirebaseError(err));
     }

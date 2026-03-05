@@ -51,13 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
-  // Redirect authenticated users away from auth pages (only if fully verified)
+  // Redirect authenticated users away from auth pages
   useEffect(() => {
     if (!loading && user) {
       // Don't redirect unverified email users — they need to stay on login/signup
       if (user.provider === "email" && !user.emailVerified) return;
       const path = location.pathname;
-      if (AUTH_PAGES.some((p) => path.includes(p))) {
+      if (AUTH_PAGES.some((p) => path.startsWith(p))) {
         navigate("/dashboard", { replace: true });
       }
     }
@@ -65,18 +65,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     await authService.signUp(email, password, fullName);
+    // Don't set user — signup signs out to enforce email verification
   };
 
   const signIn = async (email: string, password: string) => {
-    await authService.signIn(email, password);
+    const u = await authService.signIn(email, password);
+    setUser(u);
   };
 
   const signInWithGoogle = async () => {
-    await authService.signInWithGoogle();
+    const u = await authService.signInWithGoogle();
+    // Popup flow returns a real user; redirect flow returns empty stub
+    if (u?.userId) setUser(u);
   };
 
   const signInWithApple = async () => {
-    await authService.signInWithApple();
+    const u = await authService.signInWithApple();
+    if (u?.userId) setUser(u);
   };
 
   const signOut = async () => {
