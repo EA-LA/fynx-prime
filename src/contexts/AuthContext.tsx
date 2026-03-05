@@ -51,9 +51,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages (only if fully verified)
   useEffect(() => {
     if (!loading && user) {
+      // Don't redirect unverified email users — they need to stay on login/signup
+      if (user.provider === "email" && !user.emailVerified) return;
       const path = location.pathname;
       if (AUTH_PAGES.some((p) => path.includes(p))) {
         navigate("/dashboard", { replace: true });
