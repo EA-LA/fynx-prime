@@ -71,17 +71,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     const u = await authService.signIn(email, password);
     setUser(u);
+    navigate("/dashboard", { replace: true });
   };
 
   const signInWithGoogle = async () => {
     const u = await authService.signInWithGoogle();
     // Popup flow returns a real user; redirect flow returns empty stub
-    if (u?.userId) setUser(u);
+    if (u?.userId) {
+      setUser(u);
+      navigate("/dashboard", { replace: true });
+    }
   };
 
   const signInWithApple = async () => {
     const u = await authService.signInWithApple();
-    if (u?.userId) setUser(u);
+    if (u?.userId) {
+      setUser(u);
+      navigate("/dashboard", { replace: true });
+    }
   };
 
   const signOut = async () => {

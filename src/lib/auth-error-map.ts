@@ -13,6 +13,7 @@ const errorMap: Record<string, string> = {
   "auth/operation-not-allowed": "This sign-in method is not enabled.",
   "auth/expired-action-code": "This link has expired. Please request a new one.",
   "auth/invalid-action-code": "This link is invalid or has already been used.",
+  "auth/email-not-verified": "Please verify your email before logging in. Check your inbox for the verification link.",
 };
 
 export function mapFirebaseError(error: unknown): string {

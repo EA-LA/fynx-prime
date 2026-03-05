@@ -151,12 +151,22 @@ class FirebaseAuthService implements AuthService {
   }
 
   async signIn(email: string, password: string): Promise<User> {
-    const cred = await signInWithEmailAndPassword(this.getAuth(), email, password);
+    let cred;
+    try {
+      cred = await signInWithEmailAndPassword(this.getAuth(), email, password);
+    } catch (err: any) {
+      // Re-throw with original Firebase error for proper mapping
+      throw err;
+    }
 
     // Block login if email is not verified
     if (!cred.user.emailVerified) {
+      // Re-send verification email for convenience
+      try { await firebaseSendEmailVerification(cred.user); } catch {}
       await firebaseSignOut(this.getAuth());
-      throw new Error("Please verify your email before logging in. Check your inbox for the verification link.");
+      const error = new Error("Please verify your email before logging in. We've sent a new verification link to your inbox.");
+      (error as any).code = "auth/email-not-verified";
+      throw error;
     }
 
     const user = await this.hydrateFromFirestore(firebaseUserToUser(cred.user));
@@ -233,8 +243,7 @@ class FirebaseAuthService implements AuthService {
 
   async resetPassword(email: string): Promise<void> {
     await sendPasswordResetEmail(this.getAuth(), email, {
-      url: `${window.location.origin}/reset-password`,
-      handleCodeInApp: true,
+      url: `${window.location.origin}/login`,
     });
   }
 
